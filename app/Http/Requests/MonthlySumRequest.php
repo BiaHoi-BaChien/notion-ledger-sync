@@ -14,7 +14,7 @@ class MonthlySumRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'year_month' => ['required', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
+            'year_month' => ['sometimes', 'regex:/^\d{4}-(0[1-9]|1[0-2])$/'],
         ];
     }
 
