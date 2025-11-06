@@ -33,6 +33,20 @@ class MonthlySumService
             $count++;
         }
 
+        $requiredAccounts = array_values(array_filter(
+            config('services.monthly_sum.accounts', []),
+            static fn ($account) => $account !== null && $account !== ''
+        ));
+
+        if ($requiredAccounts !== []) {
+            $defaultTotals = [];
+            foreach ($requiredAccounts as $accountName) {
+                $defaultTotals[$accountName] = 0.0;
+            }
+
+            $totals = array_merge($defaultTotals, $totals);
+        }
+
         $totalAll = array_sum($totals);
 
         return [

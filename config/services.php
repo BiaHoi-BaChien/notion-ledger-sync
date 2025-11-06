@@ -10,6 +10,12 @@ return [
     'report' => [
         'mail_to' => env('SYNC_REPORT_MAIL_TO'),
     ],
+    'monthly_sum' => [
+        'accounts' => [
+            'cash' => env('MONTHLY_SUM_ACCOUNT_CASH', '現金/普通預金'),
+            'time_deposit' => env('MONTHLY_SUM_ACCOUNT_TIME_DEPOSIT', '定期預金'),
+        ],
+    ],
     'slack' => [
         'enabled' => filter_var(env('SLACK_BOT', false), FILTER_VALIDATE_BOOLEAN),
         'token' => env('SLACK_BOT_TOKEN'),

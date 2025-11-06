@@ -87,8 +87,8 @@ class NotionMonthlySumTest extends TestCase
             ->assertJson([
                 'year_month' => '2025-11',
                 'totals' => [
-                    '定期預金' => 1700.0,
                     '現金/普通預金' => 800.0,
+                    '定期預金' => 1700.0,
                 ],
                 'records_count' => 3,
                 'total_all' => 2500.0,
@@ -175,7 +175,7 @@ class NotionMonthlySumTest extends TestCase
 
         $response->assertOk()
             ->assertJson([
-                'totals' => ['現金/普通預金' => -6000.0],
+                'totals' => ['現金/普通預金' => -6000.0, '定期預金' => 0.0],
                 'total_all' => -6000.0,
                 'records_count' => 1,
             ]);
@@ -226,7 +226,7 @@ class NotionMonthlySumTest extends TestCase
 
         $response->assertOk()
             ->assertJson([
-                'totals' => ['現金/普通預金' => 400.0],
+                'totals' => ['現金/普通預金' => 400.0, '定期預金' => 0.0],
                 'records_count' => 1,
                 'total_all' => 400.0,
             ]);
@@ -304,11 +304,44 @@ class NotionMonthlySumTest extends TestCase
                 '終了' => '2024-06-01T00:00:00+00:00',
             ],
             '内訳' => [
+                '現金/普通預金' => 0.0,
                 '定期預金' => 1000.0,
             ],
             '総計' => 1000.0,
             '件数' => 1,
             '通知' => ['メール' => false, 'スラック' => false],
         ]);
+    }
+
+    public function test_totals_include_configured_accounts_when_no_records(): void
+    {
+        Config::set('services.report.mail_to', null);
+        Config::set('services.slack.enabled', false);
+        Config::set('services.monthly_sum.accounts', [
+            'cash' => '普通預金',
+            'time_deposit' => '定期預金',
+        ]);
+
+        Http::fake([
+            'https://api.notion.com/*' => Http::response([
+                'results' => [],
+                'has_more' => false,
+                'next_cursor' => null,
+            ]),
+        ]);
+
+        $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
+            ->postJson('/api/notion/monthly-sum', ['year_month' => '2024-08']);
+
+        $response->assertOk()->assertJson([
+            'totals' => [
+                '普通預金' => 0.0,
+                '定期預金' => 0.0,
+            ],
+            'records_count' => 0,
+            'total_all' => 0.0,
+        ]);
+
+        Http::assertSentCount(1);
     }
 }
