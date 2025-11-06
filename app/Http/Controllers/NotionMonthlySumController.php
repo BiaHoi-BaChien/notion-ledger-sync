@@ -6,7 +6,6 @@ use App\Http\Requests\MonthlySumRequest;
 use App\Services\MonthlySumService;
 use App\Services\Notify\MailNotifier;
 use App\Services\Notify\SlackNotifier;
-use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -18,10 +17,9 @@ class NotionMonthlySumController extends Controller
         MonthlySumRequest $request,
         MonthlySumService $service,
         MailNotifier $mailNotifier,
-        SlackNotifier $slackNotifier,
-        Request $rawRequest
+        SlackNotifier $slackNotifier
     ) {
-        $token = $rawRequest->header('X-Webhook-Token');
+        $token = $request->header('X-Webhook-Token');
         if (! $token || $token !== config('services.webhook.token')) {
             abort(Response::HTTP_UNAUTHORIZED);
         }
