@@ -3,7 +3,6 @@
 return [
     'notion' => [
         'token' => env('NOTION_API_TOKEN'),
-        'database_id' => env('NOTION_DATABASE_ID'),
         'data_source_id' => env('NOTION_DATA_SOURCE_ID'),
         'version' => env('NOTION_VERSION', '2025-09-03'),
     ],
