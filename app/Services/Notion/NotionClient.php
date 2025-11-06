@@ -12,9 +12,8 @@ class NotionClient
 {
     public function queryByDateRange(CarbonInterface $start, CarbonInterface $end): array
     {
-        // Prefer database_id for querying databases; fall back to data_source_id if present.
-        $databaseId = config('services.notion.database_id');
         $dataSourceId = config('services.notion.data_source_id');
+        $databaseId = config('services.notion.database_id');
         $token = config('services.notion.token');
         $version = config('services.notion.version', '2025-09-03');
 
@@ -22,15 +21,15 @@ class NotionClient
             throw new RuntimeException('Notion API credentials are not configured.');
         }
 
-        // Prefer data_source_id when present (use /v1/data_sources/{id}/query).
-        // Otherwise fall back to database_id (/v1/databases/{id}/query).
-        if (! blank($dataSourceId)) {
-            $url = sprintf('https://api.notion.com/v1/data_sources/%s/query', $dataSourceId);
-        } elseif (! blank($databaseId)) {
-            $url = sprintf('https://api.notion.com/v1/databases/%s/query', $databaseId);
-        } else {
-            throw new RuntimeException('Notion data source or database ID is not configured.');
+        if (blank($dataSourceId)) {
+            if (blank($databaseId)) {
+                throw new RuntimeException('Notion data source ID is not configured.');
+            }
+
+            $dataSourceId = $this->resolveDataSourceIdFromDatabase($databaseId, $token, $version);
         }
+
+        $url = sprintf('https://api.notion.com/v1/data_sources/%s/query', $dataSourceId);
 
         $headers = [
             'Authorization' => 'Bearer '.$token,
@@ -97,5 +96,28 @@ class NotionClient
         }
 
         return null;
+    }
+
+    private function resolveDataSourceIdFromDatabase(string $databaseId, string $token, string $version): string
+    {
+        $headers = [
+            'Authorization' => 'Bearer '.$token,
+            'Notion-Version' => $version,
+        ];
+
+        $response = Http::withHeaders($headers)
+            ->get(sprintf('https://api.notion.com/v1/databases/%s', $databaseId));
+
+        $response->throw();
+
+        $json = $response->json();
+        $parent = $json['parent'] ?? [];
+        $dataSourceId = Arr::get($parent, 'data_source_id');
+
+        if (blank($dataSourceId)) {
+            throw new RuntimeException('Unable to resolve Notion data source ID from database.');
+        }
+
+        return $dataSourceId;
     }
 }
