@@ -22,12 +22,14 @@ class NotionClient
             throw new RuntimeException('Notion API credentials are not configured.');
         }
 
-        if (! blank($databaseId)) {
+        // Prefer data_source_id when present (use /v1/data_sources/{id}/query).
+        // Otherwise fall back to database_id (/v1/databases/{id}/query).
+        if (! blank($dataSourceId)) {
+            $url = sprintf('https://api.notion.com/v1/data_sources/%s/query', $dataSourceId);
+        } elseif (! blank($databaseId)) {
             $url = sprintf('https://api.notion.com/v1/databases/%s/query', $databaseId);
         } else {
-            // legacy / alternative path using data_sources query (if configured)
-            // Correct endpoint is /v1/data_sources/{id}/query (no /items)
-            $url = sprintf('https://api.notion.com/v1/data_sources/%s/query', $dataSourceId);
+            throw new RuntimeException('Notion data source or database ID is not configured.');
         }
 
         $headers = [
