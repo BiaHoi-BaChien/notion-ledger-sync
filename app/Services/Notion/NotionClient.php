@@ -20,7 +20,7 @@ class NotionClient
             throw new RuntimeException('Notion API credentials are not configured.');
         }
 
-        $url = Str::of('https://api.notion.com/v1/data_sources/%s/items/query')->sprintf($dataSourceId);
+        $url = sprintf('https://api.notion.com/v1/data_sources/%s/items/query', $dataSourceId);
 
         $headers = [
             'Authorization' => 'Bearer '.$token,
