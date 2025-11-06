@@ -18,6 +18,9 @@ php artisan key:generate
 `.env` に以下の項目を設定してください。
 
 ```
+# アプリケーション設定
+APP_TIMEZONE=UTC
+
 # Notion 接続
 NOTION_API_TOKEN=
 NOTION_DATA_SOURCE_ID=
@@ -51,7 +54,7 @@ Notion オートメーションなどから下記のリクエストを送信し�
 ```
 POST /api/notion/monthly-sum
 ヘッダー: X-Webhook-Token: <WEBHOOK_TOKEN>
-ボディ: {"year_month":"YYYY-MM"} ※省略時は現在の年月を使用
+ボディ: {"year_month":"YYYY-MM"} ※省略時は現在の年月を使用（APP_TIMEZONE のタイムゾーンで判定）
 ```
 
 API は指定した年月のレコードを Notion API (バージョン 2025-09-03) で取得し、口座ごとの合計値・総合計・件数を集計します。設定に応じてメールと Slack への通知も実施します。

@@ -23,7 +23,8 @@ class NotionMonthlySumController extends Controller
             abort(Response::HTTP_UNAUTHORIZED);
         }
 
-        $yearMonth = $request->validated('year_month', Carbon::now('UTC')->format('Y-m'));
+        $timezone = config('app.timezone', 'UTC');
+        $yearMonth = $request->validated('year_month', Carbon::now($timezone)->format('Y-m'));
 
         $started = microtime(true);
         $result = $service->run($yearMonth);

@@ -276,9 +276,11 @@ class NotionMonthlySumTest extends TestCase
     {
         Config::set('services.report.mail_to', 'notify@example.com');
         Config::set('services.slack.enabled', false);
+        $originalTimezone = config('app.timezone');
+        Config::set('app.timezone', 'Asia/Tokyo');
 
         Mail::fake();
-        Carbon::setTestNow(Carbon::create(2025, 6, 15, 9, 30, 0, 'UTC'));
+        Carbon::setTestNow(Carbon::create(2025, 6, 1, 0, 30, 0, 'Asia/Tokyo'));
 
         Http::fake([
             'https://api.notion.com/*' => Http::response([
@@ -313,6 +315,7 @@ class NotionMonthlySumTest extends TestCase
             $this->assertSame('2025-07-01T00:00:00+00:00', $sentMail->result['range']['end']);
         } finally {
             Carbon::setTestNow();
+            Config::set('app.timezone', $originalTimezone);
         }
     }
 
