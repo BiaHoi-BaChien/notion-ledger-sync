@@ -331,8 +331,9 @@ class NotionMonthlySumTest extends TestCase
         Config::set('services.report.mail_to', 'notify@example.com');
         Config::set('services.slack.enabled', false);
         Config::set('services.monthly_sum.accounts', [
-            'cash' => '普通預金',
-            'time_deposit' => '定期預金',
+            '普通預金',
+            '定期預金',
+            '貯蓄預金',
         ]);
 
         Mail::fake();
@@ -359,6 +360,7 @@ class NotionMonthlySumTest extends TestCase
         $this->assertSame([
             '普通預金' => 0.0,
             '定期預金' => 0.0,
+            '貯蓄預金' => 0.0,
         ], $sentMail->result['totals']);
         $this->assertSame(0, $sentMail->result['records_count']);
         $this->assertSame(0.0, $sentMail->result['total_all']);
