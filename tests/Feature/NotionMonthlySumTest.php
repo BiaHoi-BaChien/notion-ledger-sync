@@ -17,6 +17,7 @@ class NotionMonthlySumTest extends TestCase
 
         Config::set('services.notion.token', 'test-token');
         Config::set('services.notion.data_source_id', 'ds123');
+        Config::set('services.notion.database_id', null);
         Config::set('services.notion.version', '2025-09-03');
         Config::set('services.webhook.token', 'hook-token');
         Config::set('services.response.keys', config('services.response.keys'));
@@ -181,6 +182,68 @@ class NotionMonthlySumTest extends TestCase
 
         Mail::assertNothingSent();
         Http::assertSentCount(1);
+    }
+
+    public function test_resolves_data_source_id_from_database_when_missing(): void
+    {
+        Config::set('services.notion.data_source_id', null);
+        Config::set('services.notion.database_id', 'db123');
+        Config::set('services.report.mail_to', null);
+        Config::set('services.slack.enabled', false);
+
+        Mail::fake();
+
+        Http::fake(function ($request) {
+            if ($request->url() === 'https://api.notion.com/v1/databases/db123') {
+                return Http::response([
+                    'parent' => [
+                        'type' => 'data_source_id',
+                        'data_source_id' => 'resolved-ds',
+                    ],
+                ]);
+            }
+
+            if ($request->url() === 'https://api.notion.com/v1/data_sources/resolved-ds/query') {
+                return Http::response([
+                    'results' => [
+                        [
+                            'properties' => [
+                                '口座' => ['select' => ['name' => '現金/普通預金']],
+                                '金額' => ['number' => 400],
+                            ],
+                        ],
+                    ],
+                    'has_more' => false,
+                    'next_cursor' => null,
+                ]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
+            ->postJson('/api/notion/monthly-sum', ['year_month' => '2024-05']);
+
+        $response->assertOk()
+            ->assertJson([
+                'totals' => ['現金/普通預金' => 400.0],
+                'records_count' => 1,
+                'total_all' => 400.0,
+            ]);
+
+        Mail::assertNothingSent();
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'GET'
+                && $request->url() === 'https://api.notion.com/v1/databases/db123';
+        });
+
+        Http::assertSent(function ($request) {
+            return $request->method() === 'POST'
+                && $request->url() === 'https://api.notion.com/v1/data_sources/resolved-ds/query';
+        });
+
+        Http::assertSentCount(2);
     }
 
     public function test_validation_error(): void
