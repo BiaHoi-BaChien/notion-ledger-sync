@@ -18,7 +18,7 @@ class NotionMonthlySumTest extends TestCase
 
         Config::set('services.notion.token', 'test-token');
         Config::set('services.notion.data_source_id', 'ds123');
-        Config::set('services.notion.database_id', null);
+        Config::set('services.notion.database_id', 'carryover-db');
         Config::set('services.notion.version', '2025-09-03');
         Config::set('services.webhook.token', 'hook-token');
     }
@@ -33,8 +33,10 @@ class NotionMonthlySumTest extends TestCase
         Config::set('services.slack.unfurl_media', false);
 
         Mail::fake();
+        $carryOverRequests = [];
+
         Http::fake([
-            'https://api.notion.com/*' => Http::sequence()
+            'https://api.notion.com/v1/data_sources/ds123/query' => Http::sequence()
                 ->push([
                     'results' => [
                         [
@@ -77,6 +79,11 @@ class NotionMonthlySumTest extends TestCase
                     'has_more' => false,
                     'next_cursor' => null,
                 ]),
+            'https://api.notion.com/v1/pages' => function ($request) use (&$carryOverRequests) {
+                $carryOverRequests[] = $request;
+
+                return Http::response(['object' => 'page'], 200);
+            },
             'https://slack.com/api/chat.postMessage' => Http::response(['ok' => true], 200),
         ]);
 
@@ -116,7 +123,33 @@ class NotionMonthlySumTest extends TestCase
             return $version === '2025-09-03'
                 && str_contains($request->url(), '/data_sources/ds123/');
         });
-        Http::assertSentCount(4);
+        Http::assertSentCount(5);
+
+        $this->assertCount(2, $carryOverRequests);
+
+        $expectedAccounts = ['現金/普通預金', '定期預金'];
+        $carryOverDate = '2025-12-01';
+
+        foreach ($carryOverRequests as $request) {
+            $payload = $request->data();
+
+            $this->assertSame('carryover-db', Arr::get($payload, 'parent.database_id'));
+            $this->assertSame('繰越', Arr::get($payload, 'properties.摘要.title.0.text.content'));
+            $this->assertSame('繰越', Arr::get($payload, 'properties.種類.select.name'));
+            $this->assertSame('繰越', Arr::get($payload, 'properties.カテゴリー.select.name'));
+            $this->assertSame($carryOverDate, Arr::get($payload, 'properties.日付.date.start'));
+
+            $account = Arr::get($payload, 'properties.口座.select.name');
+            $this->assertContains($account, $expectedAccounts);
+
+            if ($account === '現金/普通預金') {
+                $this->assertSame(800.0, Arr::get($payload, 'properties.金額入力.number'));
+            } elseif ($account === '定期預金') {
+                $this->assertSame(1700.0, Arr::get($payload, 'properties.金額入力.number'));
+            } else {
+                $this->fail('Unexpected account in carry-over payload.');
+            }
+        }
     }
 
     public function test_skips_notifications_when_disabled(): void
@@ -125,8 +158,10 @@ class NotionMonthlySumTest extends TestCase
         Config::set('services.slack.enabled', false);
 
         Mail::fake();
+        $carryOverRequests = [];
+
         Http::fake([
-            'https://api.notion.com/*' => Http::response([
+            'https://api.notion.com/v1/data_sources/ds123/query' => Http::response([
                 'results' => [
                     [
                         'properties' => [
@@ -138,6 +173,11 @@ class NotionMonthlySumTest extends TestCase
                 'has_more' => false,
                 'next_cursor' => null,
             ]),
+            'https://api.notion.com/v1/pages' => function ($request) use (&$carryOverRequests) {
+                $carryOverRequests[] = $request;
+
+                return Http::response(['object' => 'page'], 200);
+            },
         ]);
 
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
@@ -146,7 +186,8 @@ class NotionMonthlySumTest extends TestCase
         $response->assertNoContent();
 
         Mail::assertNothingSent();
-        Http::assertSentCount(1);
+        Http::assertSentCount(3);
+        $this->assertCount(2, $carryOverRequests);
     }
 
     public function test_handles_formula_amount_property(): void
@@ -155,8 +196,10 @@ class NotionMonthlySumTest extends TestCase
         Config::set('services.slack.enabled', false);
 
         Mail::fake();
+        $carryOverRequests = [];
+
         Http::fake([
-            'https://api.notion.com/*' => Http::response([
+            'https://api.notion.com/v1/data_sources/ds123/query' => Http::response([
                 'results' => [
                     [
                         'properties' => [
@@ -171,6 +214,11 @@ class NotionMonthlySumTest extends TestCase
                 'has_more' => false,
                 'next_cursor' => null,
             ]),
+            'https://api.notion.com/v1/pages' => function ($request) use (&$carryOverRequests) {
+                $carryOverRequests[] = $request;
+
+                return Http::response(['object' => 'page'], 200);
+            },
         ]);
 
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
@@ -192,7 +240,8 @@ class NotionMonthlySumTest extends TestCase
         $this->assertSame(-6000.0, $sentMail->result['total_all']);
         $this->assertSame(1, $sentMail->result['records_count']);
 
-        Http::assertSentCount(1);
+        Http::assertSentCount(3);
+        $this->assertCount(2, $carryOverRequests);
     }
 
     public function test_resolves_data_source_id_from_database_when_missing(): void
@@ -204,7 +253,9 @@ class NotionMonthlySumTest extends TestCase
 
         Mail::fake();
 
-        Http::fake(function ($request) {
+        $carryOverRequests = [];
+
+        Http::fake(function ($request) use (&$carryOverRequests) {
             if ($request->url() === 'https://api.notion.com/v1/databases/db123') {
                 return Http::response([
                     'parent' => [
@@ -227,6 +278,12 @@ class NotionMonthlySumTest extends TestCase
                     'has_more' => false,
                     'next_cursor' => null,
                 ]);
+            }
+
+            if ($request->url() === 'https://api.notion.com/v1/pages') {
+                $carryOverRequests[] = $request;
+
+                return Http::response(['object' => 'page'], 200);
             }
 
             return Http::response([], 404);
@@ -261,7 +318,8 @@ class NotionMonthlySumTest extends TestCase
                 && $request->url() === 'https://api.notion.com/v1/data_sources/resolved-ds/query';
         });
 
-        Http::assertSentCount(2);
+        Http::assertSentCount(4);
+        $this->assertCount(2, $carryOverRequests);
     }
 
     public function test_validation_error(): void
@@ -337,12 +395,19 @@ class NotionMonthlySumTest extends TestCase
         ]);
 
         Mail::fake();
+        $carryOverRequests = [];
+
         Http::fake([
-            'https://api.notion.com/*' => Http::response([
+            'https://api.notion.com/v1/data_sources/ds123/query' => Http::response([
                 'results' => [],
                 'has_more' => false,
                 'next_cursor' => null,
             ]),
+            'https://api.notion.com/v1/pages' => function ($request) use (&$carryOverRequests) {
+                $carryOverRequests[] = $request;
+
+                return Http::response(['object' => 'page'], 200);
+            },
         ]);
 
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
@@ -365,6 +430,24 @@ class NotionMonthlySumTest extends TestCase
         $this->assertSame(0, $sentMail->result['records_count']);
         $this->assertSame(0.0, $sentMail->result['total_all']);
 
-        Http::assertSentCount(1);
+        Http::assertSentCount(4);
+
+        $this->assertCount(3, $carryOverRequests);
+        $this->assertSameCanonicalizing([
+            '普通預金',
+            '定期預金',
+            '貯蓄預金',
+        ], array_map(fn ($request) => Arr::get($request->data(), 'properties.口座.select.name'), $carryOverRequests));
+
+        foreach ($carryOverRequests as $request) {
+            $payload = $request->data();
+
+            $this->assertSame('carryover-db', Arr::get($payload, 'parent.database_id'));
+            $this->assertSame('繰越', Arr::get($payload, 'properties.摘要.title.0.text.content'));
+            $this->assertSame('繰越', Arr::get($payload, 'properties.種類.select.name'));
+            $this->assertSame('繰越', Arr::get($payload, 'properties.カテゴリー.select.name'));
+            $this->assertSame('2024-09-01', Arr::get($payload, 'properties.日付.date.start'));
+            $this->assertSame(0.0, Arr::get($payload, 'properties.金額入力.number'));
+        }
     }
 }
