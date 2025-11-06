@@ -47,6 +47,12 @@ class MonthlySumService
             $totals = array_merge($defaultTotals, $totals);
         }
 
+        $carryOverDate = $start->addMonth()->toDateString();
+
+        foreach ($totals as $account => $amount) {
+            $this->notion->createCarryOverPage($account, (float) $amount, $carryOverDate);
+        }
+
         $totalAll = array_sum($totals);
 
         return [

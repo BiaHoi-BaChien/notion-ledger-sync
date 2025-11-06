@@ -5,7 +5,6 @@ namespace App\Services\Notion;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 class NotionClient
@@ -79,6 +78,64 @@ class NotionClient
         } while ($hasMore && $cursor);
 
         return $results;
+    }
+
+    public function createCarryOverPage(string $account, float $amount, string $date): void
+    {
+        $databaseId = config('services.notion.database_id');
+        $token = config('services.notion.token');
+        $version = config('services.notion.version', '2025-09-03');
+
+        if (blank($token)) {
+            throw new RuntimeException('Notion API credentials are not configured.');
+        }
+
+        if (blank($databaseId)) {
+            throw new RuntimeException('Notion database ID is not configured.');
+        }
+
+        $headers = [
+            'Authorization' => 'Bearer '.$token,
+            'Notion-Version' => $version,
+            'Content-Type' => 'application/json',
+        ];
+
+        $payload = [
+            'parent' => [
+                'type' => 'database_id',
+                'database_id' => $databaseId,
+            ],
+            'properties' => [
+                '日付' => [
+                    'date' => [
+                        'start' => $date,
+                    ],
+                ],
+                '摘要' => [
+                    'title' => [[
+                        'text' => [
+                            'content' => '繰越',
+                        ],
+                    ]],
+                ],
+                '金額入力' => [
+                    'number' => (float) $amount,
+                ],
+                '種類' => [
+                    'select' => ['name' => '繰越'],
+                ],
+                'カテゴリー' => [
+                    'select' => ['name' => '繰越'],
+                ],
+                '口座' => [
+                    'select' => ['name' => $account],
+                ],
+            ],
+        ];
+
+        Http::withHeaders($headers)
+            ->post('https://api.notion.com/v1/pages', $payload)
+            ->throw();
     }
 
     private function resolveAmount(array $properties): ?float
