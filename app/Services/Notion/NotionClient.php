@@ -25,8 +25,9 @@ class NotionClient
         if (! blank($databaseId)) {
             $url = sprintf('https://api.notion.com/v1/databases/%s/query', $databaseId);
         } else {
-            // legacy / alternative path using data source items (if configured)
-            $url = sprintf('https://api.notion.com/v1/data_sources/%s/items/query', $dataSourceId);
+            // legacy / alternative path using data_sources query (if configured)
+            // Correct endpoint is /v1/data_sources/{id}/query (no /items)
+            $url = sprintf('https://api.notion.com/v1/data_sources/%s/query', $dataSourceId);
         }
 
         $headers = [
