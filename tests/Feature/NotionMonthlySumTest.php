@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\MonthlySumReport;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -20,7 +21,6 @@ class NotionMonthlySumTest extends TestCase
         Config::set('services.notion.database_id', null);
         Config::set('services.notion.version', '2025-09-03');
         Config::set('services.webhook.token', 'hook-token');
-        Config::set('services.response.keys', config('services.response.keys'));
     }
 
     public function test_monthly_sum_success(): void
@@ -83,19 +83,23 @@ class NotionMonthlySumTest extends TestCase
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
             ->postJson('/api/notion/monthly-sum', ['year_month' => '2025-11']);
 
-        $response->assertOk()
-            ->assertJson([
-                'year_month' => '2025-11',
-                'totals' => [
-                    '現金/普通預金' => 800.0,
-                    '定期預金' => 1700.0,
-                ],
-                'records_count' => 3,
-                'total_all' => 2500.0,
-                'notified' => ['mail' => true, 'slack' => true],
-            ]);
+        $response->assertNoContent();
 
-        Mail::assertSent(MonthlySumReport::class, 1);
+        $sentMail = null;
+        Mail::assertSent(MonthlySumReport::class, function (MonthlySumReport $mail) use (&$sentMail) {
+            $sentMail = $mail;
+
+            return true;
+        });
+        $this->assertNotNull($sentMail);
+        $this->assertSame('2025-11', $sentMail->result['year_month']);
+        $this->assertSame([
+            '現金/普通預金' => 800.0,
+            '定期預金' => 1700.0,
+        ], $sentMail->result['totals']);
+        $this->assertSame(3, $sentMail->result['records_count']);
+        $this->assertSame(2500.0, $sentMail->result['total_all']);
+
         Http::assertSent(function ($request) {
             if ($request->url() !== 'https://slack.com/api/chat.postMessage') {
                 return false;
@@ -139,8 +143,7 @@ class NotionMonthlySumTest extends TestCase
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
             ->postJson('/api/notion/monthly-sum', ['year_month' => '2024-01']);
 
-        $response->assertOk()
-            ->assertJson(['notified' => ['mail' => false, 'slack' => false]]);
+        $response->assertNoContent();
 
         Mail::assertNothingSent();
         Http::assertSentCount(1);
@@ -148,7 +151,7 @@ class NotionMonthlySumTest extends TestCase
 
     public function test_handles_formula_amount_property(): void
     {
-        Config::set('services.report.mail_to', null);
+        Config::set('services.report.mail_to', 'notify@example.com');
         Config::set('services.slack.enabled', false);
 
         Mail::fake();
@@ -173,14 +176,22 @@ class NotionMonthlySumTest extends TestCase
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
             ->postJson('/api/notion/monthly-sum', ['year_month' => '2025-11']);
 
-        $response->assertOk()
-            ->assertJson([
-                'totals' => ['現金/普通預金' => -6000.0, '定期預金' => 0.0],
-                'total_all' => -6000.0,
-                'records_count' => 1,
-            ]);
+        $response->assertNoContent();
 
-        Mail::assertNothingSent();
+        $sentMail = null;
+        Mail::assertSent(MonthlySumReport::class, function (MonthlySumReport $mail) use (&$sentMail) {
+            $sentMail = $mail;
+
+            return true;
+        });
+        $this->assertNotNull($sentMail);
+        $this->assertSame([
+            '現金/普通預金' => -6000.0,
+            '定期預金' => 0.0,
+        ], $sentMail->result['totals']);
+        $this->assertSame(-6000.0, $sentMail->result['total_all']);
+        $this->assertSame(1, $sentMail->result['records_count']);
+
         Http::assertSentCount(1);
     }
 
@@ -188,7 +199,7 @@ class NotionMonthlySumTest extends TestCase
     {
         Config::set('services.notion.data_source_id', null);
         Config::set('services.notion.database_id', 'db123');
-        Config::set('services.report.mail_to', null);
+        Config::set('services.report.mail_to', 'notify@example.com');
         Config::set('services.slack.enabled', false);
 
         Mail::fake();
@@ -224,14 +235,21 @@ class NotionMonthlySumTest extends TestCase
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
             ->postJson('/api/notion/monthly-sum', ['year_month' => '2024-05']);
 
-        $response->assertOk()
-            ->assertJson([
-                'totals' => ['現金/普通預金' => 400.0, '定期預金' => 0.0],
-                'records_count' => 1,
-                'total_all' => 400.0,
-            ]);
+        $response->assertNoContent();
 
-        Mail::assertNothingSent();
+        $sentMail = null;
+        Mail::assertSent(MonthlySumReport::class, function (MonthlySumReport $mail) use (&$sentMail) {
+            $sentMail = $mail;
+
+            return true;
+        });
+        $this->assertNotNull($sentMail);
+        $this->assertSame([
+            '現金/普通預金' => 400.0,
+            '定期預金' => 0.0,
+        ], $sentMail->result['totals']);
+        $this->assertSame(1, $sentMail->result['records_count']);
+        $this->assertSame(400.0, $sentMail->result['total_all']);
 
         Http::assertSent(function ($request) {
             return $request->method() === 'GET'
@@ -254,38 +272,21 @@ class NotionMonthlySumTest extends TestCase
         $response->assertStatus(422);
     }
 
-    public function test_requires_token(): void
+    public function test_defaults_to_current_month_when_year_month_missing(): void
     {
-        $response = $this->postJson('/api/notion/monthly-sum', ['year_month' => '2024-10']);
-
-        $response->assertStatus(401);
-    }
-
-    public function test_can_customize_response_keys(): void
-    {
-        Config::set('services.response.keys', [
-            'year_month' => 'ym',
-            'range' => '期間',
-            'range_start' => '開始',
-            'range_end' => '終了',
-            'totals' => '内訳',
-            'total_all' => '総計',
-            'records_count' => '件数',
-            'notified' => '通知',
-            'notified_mail' => 'メール',
-            'notified_slack' => 'スラック',
-        ]);
-
-        Config::set('services.report.mail_to', null);
+        Config::set('services.report.mail_to', 'notify@example.com');
         Config::set('services.slack.enabled', false);
+
+        Mail::fake();
+        Carbon::setTestNow(Carbon::create(2025, 6, 15, 9, 30, 0, 'UTC'));
 
         Http::fake([
             'https://api.notion.com/*' => Http::response([
                 'results' => [
                     [
                         'properties' => [
-                            '口座' => ['select' => ['name' => '定期預金']],
-                            '金額' => ['number' => 1000],
+                            '口座' => ['select' => ['name' => '現金/普通預金']],
+                            '金額' => ['number' => 5000],
                         ],
                     ],
                 ],
@@ -294,34 +295,44 @@ class NotionMonthlySumTest extends TestCase
             ]),
         ]);
 
-        $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
-            ->postJson('/api/notion/monthly-sum', ['year_month' => '2024-05']);
+        try {
+            $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
+                ->postJson('/api/notion/monthly-sum');
 
-        $response->assertOk()->assertJson([
-            'ym' => '2024-05',
-            '期間' => [
-                '開始' => '2024-05-01T00:00:00+00:00',
-                '終了' => '2024-06-01T00:00:00+00:00',
-            ],
-            '内訳' => [
-                '現金/普通預金' => 0.0,
-                '定期預金' => 1000.0,
-            ],
-            '総計' => 1000.0,
-            '件数' => 1,
-            '通知' => ['メール' => false, 'スラック' => false],
-        ]);
+            $response->assertNoContent();
+
+            $sentMail = null;
+            Mail::assertSent(MonthlySumReport::class, function (MonthlySumReport $mail) use (&$sentMail) {
+                $sentMail = $mail;
+
+                return true;
+            });
+            $this->assertNotNull($sentMail);
+            $this->assertSame('2025-06', $sentMail->result['year_month']);
+            $this->assertSame('2025-06-01T00:00:00+00:00', $sentMail->result['range']['start']);
+            $this->assertSame('2025-07-01T00:00:00+00:00', $sentMail->result['range']['end']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_requires_token(): void
+    {
+        $response = $this->postJson('/api/notion/monthly-sum', ['year_month' => '2024-10']);
+
+        $response->assertStatus(401);
     }
 
     public function test_totals_include_configured_accounts_when_no_records(): void
     {
-        Config::set('services.report.mail_to', null);
+        Config::set('services.report.mail_to', 'notify@example.com');
         Config::set('services.slack.enabled', false);
         Config::set('services.monthly_sum.accounts', [
             'cash' => '普通預金',
             'time_deposit' => '定期預金',
         ]);
 
+        Mail::fake();
         Http::fake([
             'https://api.notion.com/*' => Http::response([
                 'results' => [],
@@ -333,14 +344,21 @@ class NotionMonthlySumTest extends TestCase
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
             ->postJson('/api/notion/monthly-sum', ['year_month' => '2024-08']);
 
-        $response->assertOk()->assertJson([
-            'totals' => [
-                '普通預金' => 0.0,
-                '定期預金' => 0.0,
-            ],
-            'records_count' => 0,
-            'total_all' => 0.0,
-        ]);
+        $response->assertNoContent();
+
+        $sentMail = null;
+        Mail::assertSent(MonthlySumReport::class, function (MonthlySumReport $mail) use (&$sentMail) {
+            $sentMail = $mail;
+
+            return true;
+        });
+        $this->assertNotNull($sentMail);
+        $this->assertSame([
+            '普通預金' => 0.0,
+            '定期預金' => 0.0,
+        ], $sentMail->result['totals']);
+        $this->assertSame(0, $sentMail->result['records_count']);
+        $this->assertSame(0.0, $sentMail->result['total_all']);
 
         Http::assertSentCount(1);
     }

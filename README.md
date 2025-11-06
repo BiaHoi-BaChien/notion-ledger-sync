@@ -44,19 +44,6 @@ SLACK_DM_USER_IDS=
 SLACK_UNFURL_LINKS=false
 SLACK_UNFURL_MEDIA=false
 
-# レスポンスキーのカスタマイズ（任意）
-RESPONSE_KEY_YEAR_MONTH=year_month
-RESPONSE_KEY_RANGE=range
-RESPONSE_KEY_RANGE_START=start
-RESPONSE_KEY_RANGE_END=end
-RESPONSE_KEY_TOTALS=totals
-RESPONSE_KEY_TOTAL_ALL=total_all
-RESPONSE_KEY_RECORDS_COUNT=records_count
-RESPONSE_KEY_NOTIFIED=notified
-RESPONSE_KEY_NOTIFIED_MAIL=mail
-RESPONSE_KEY_NOTIFIED_SLACK=slack
-```
-
 ## 利用方法
 
 Notion オートメーションなどから下記のリクエストを送信します。
@@ -64,10 +51,10 @@ Notion オートメーションなどから下記のリクエストを送信し�
 ```
 POST /api/notion/monthly-sum
 ヘッダー: X-Webhook-Token: <WEBHOOK_TOKEN>
-ボディ: {"year_month":"YYYY-MM"}
+ボディ: {"year_month":"YYYY-MM"} ※省略時は現在の年月を使用
 ```
 
-API は指定した年月のレコードを Notion API (バージョン 2025-09-03) で取得し、口座ごとの合計値・総合計・件数を JSON として返します。設定に応じてメールと Slack への通知も実施します。レスポンスの各項目名は環境変数で変更できます。
+API は指定した年月のレコードを Notion API (バージョン 2025-09-03) で取得し、口座ごとの合計値・総合計・件数を集計します。設定に応じてメールと Slack への通知も実施します。
 
 ## テスト
 

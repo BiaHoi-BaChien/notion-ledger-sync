@@ -6,7 +6,6 @@ use App\Http\Requests\MonthlySumRequest;
 use App\Services\MonthlySumService;
 use App\Services\Notify\MailNotifier;
 use App\Services\Notify\SlackNotifier;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,7 +23,7 @@ class NotionMonthlySumController extends Controller
             abort(Response::HTTP_UNAUTHORIZED);
         }
 
-        $yearMonth = $request->validated('year_month');
+        $yearMonth = $request->validated('year_month', Carbon::now('UTC')->format('Y-m'));
 
         $started = microtime(true);
         $result = $service->run($yearMonth);
@@ -64,25 +63,6 @@ class NotionMonthlySumController extends Controller
             'duration_ms' => $durationMs,
         ]);
 
-        $responseKeys = config('services.response.keys', []);
-        $key = static fn (string $name, string $default) => $responseKeys[$name] ?? $default;
-
-        $responsePayload = [
-            $key('year_month', 'year_month') => $result['year_month'],
-            $key('range', 'range') => [
-                $key('range_start', 'start') => Arr::get($result, 'range.start'),
-                $key('range_end', 'end') => Arr::get($result, 'range.end'),
-            ],
-            $key('totals', 'totals') => $result['totals'],
-            $key('total_all', 'total_all') => $result['total_all'],
-            $key('records_count', 'records_count') => $result['records_count'],
-        ];
-
-        $responsePayload[$key('notified', 'notified')] = [
-            $key('notified_mail', 'mail') => $notified['mail'],
-            $key('notified_slack', 'slack') => $notified['slack'],
-        ];
-
-        return response()->json($responsePayload);
+        return response()->noContent();
     }
 }
