@@ -145,6 +145,44 @@ class NotionMonthlySumTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_handles_formula_amount_property(): void
+    {
+        Config::set('services.report.mail_to', null);
+        Config::set('services.slack.enabled', false);
+
+        Mail::fake();
+        Http::fake([
+            'https://api.notion.com/*' => Http::response([
+                'results' => [
+                    [
+                        'properties' => [
+                            '口座' => ['select' => ['name' => '現金/普通預金']],
+                            '金額' => [
+                                'type' => 'formula',
+                                'formula' => ['type' => 'number', 'number' => -6000],
+                            ],
+                        ],
+                    ],
+                ],
+                'has_more' => false,
+                'next_cursor' => null,
+            ]),
+        ]);
+
+        $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
+            ->postJson('/api/notion/monthly-sum', ['year_month' => '2025-11']);
+
+        $response->assertOk()
+            ->assertJson([
+                'totals' => ['現金/普通預金' => -6000.0],
+                'total_all' => -6000.0,
+                'records_count' => 1,
+            ]);
+
+        Mail::assertNothingSent();
+        Http::assertSentCount(1);
+    }
+
     public function test_validation_error(): void
     {
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])

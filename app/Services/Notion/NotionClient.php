@@ -12,13 +12,13 @@ class NotionClient
 {
     public function queryByDateRange(CarbonInterface $start, CarbonInterface $end): array
     {
-    // Prefer database_id for querying databases; fall back to data_source_id if present.
-    $databaseId = config('services.notion.database_id');
-    $dataSourceId = config('services.notion.data_source_id');
-    $token = config('services.notion.token');
+        // Prefer database_id for querying databases; fall back to data_source_id if present.
+        $databaseId = config('services.notion.database_id');
+        $dataSourceId = config('services.notion.data_source_id');
+        $token = config('services.notion.token');
         $version = config('services.notion.version', '2025-09-03');
 
-        if (blank($dataSourceId) || blank($token)) {
+        if (blank($token)) {
             throw new RuntimeException('Notion API credentials are not configured.');
         }
 
@@ -70,7 +70,7 @@ class NotionClient
                 $properties = $page['properties'] ?? [];
                 $results[] = [
                     'account' => Arr::get($properties, '口座.select.name'),
-                    'amount' => Arr::get($properties, '金額.number'),
+                    'amount' => $this->resolveAmount($properties),
                     'date' => Arr::get($properties, '日付.date.start'),
                 ];
             }
@@ -80,5 +80,22 @@ class NotionClient
         } while ($hasMore && $cursor);
 
         return $results;
+    }
+
+    private function resolveAmount(array $properties): ?float
+    {
+        $amount = Arr::get($properties, '金額.number');
+
+        if ($amount !== null) {
+            return $amount;
+        }
+
+        $formulaAmount = Arr::get($properties, '金額.formula.number');
+
+        if ($formulaAmount !== null) {
+            return $formulaAmount;
+        }
+
+        return null;
     }
 }
