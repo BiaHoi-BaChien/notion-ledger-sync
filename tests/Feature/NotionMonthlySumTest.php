@@ -16,7 +16,6 @@ class NotionMonthlySumTest extends TestCase
         parent::setUp();
 
         Config::set('services.notion.token', 'test-token');
-        Config::set('services.notion.database_id', 'db123');
         Config::set('services.notion.data_source_id', 'ds123');
         Config::set('services.notion.version', '2025-09-03');
         Config::set('services.webhook.token', 'hook-token');
@@ -110,7 +109,7 @@ class NotionMonthlySumTest extends TestCase
             $version = Arr::first($request->header('Notion-Version'));
 
             return $version === '2025-09-03'
-                && Arr::get($request->data(), 'data_source_id') === 'ds123';
+                && str_contains($request->url(), '/data_sources/ds123/');
         });
         Http::assertSentCount(4);
     }

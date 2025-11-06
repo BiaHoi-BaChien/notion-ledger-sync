@@ -20,7 +20,6 @@ php artisan key:generate
 ```
 # Notion 接続
 NOTION_API_TOKEN=
-NOTION_DATABASE_ID=
 NOTION_DATA_SOURCE_ID=
 NOTION_VERSION=2025-09-03
 

@@ -12,16 +12,15 @@ class NotionClient
 {
     public function queryByDateRange(CarbonInterface $start, CarbonInterface $end): array
     {
-        $databaseId = config('services.notion.database_id');
         $dataSourceId = config('services.notion.data_source_id');
         $token = config('services.notion.token');
         $version = config('services.notion.version', '2025-09-03');
 
-        if (blank($databaseId) || blank($dataSourceId) || blank($token)) {
+        if (blank($dataSourceId) || blank($token)) {
             throw new RuntimeException('Notion API credentials are not configured.');
         }
 
-        $url = Str::of('https://api.notion.com/v1/databases/%s/query')->sprintf($databaseId);
+        $url = Str::of('https://api.notion.com/v1/data_sources/%s/items/query')->sprintf($dataSourceId);
 
         $headers = [
             'Authorization' => 'Bearer '.$token,
@@ -30,7 +29,6 @@ class NotionClient
         ];
 
         $payload = [
-            'data_source_id' => $dataSourceId,
             'filter' => [
                 'and' => [
                     [
