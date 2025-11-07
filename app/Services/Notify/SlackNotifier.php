@@ -46,7 +46,6 @@ class SlackNotifier
             $lines[] = sprintf('%s: %s', $account, number_format((float) $amount));
         }
 
-        $lines[] = '合計: '.number_format((float) $result['total_all']);
         $lines[] = '件数: '.$result['records_count'];
 
         return implode("\n", $lines);

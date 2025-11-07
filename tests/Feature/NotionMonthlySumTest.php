@@ -96,6 +96,12 @@ class NotionMonthlySumTest extends TestCase
         Mail::assertSent(MonthlySumReport::class, function (MonthlySumReport $mail) use (&$sentMail) {
             $sentMail = $mail;
 
+            $body = $mail->render();
+            $this->assertStringContainsString("件数: 3", $body);
+            $this->assertStringContainsString("現金/普通預金: 800", $body);
+            $this->assertStringContainsString("定期預金: 1,700", $body);
+            $this->assertStringNotContainsString('合計:', $body);
+
             return true;
         });
         $this->assertNotNull($sentMail);
@@ -113,6 +119,20 @@ class NotionMonthlySumTest extends TestCase
             }
             return $request['channel'] === 'U2';
         });
+
+        $slackRequests = Http::recorded(function ($request) {
+            return $request->url() === 'https://slack.com/api/chat.postMessage';
+        });
+        $this->assertCount(2, $slackRequests);
+
+        foreach ($slackRequests as [$request]) {
+            $text = Arr::get($request->data(), 'text');
+
+            $this->assertStringContainsString("件数: 3", $text);
+            $this->assertStringContainsString("現金/普通預金: 800", $text);
+            $this->assertStringContainsString("定期預金: 1,700", $text);
+            $this->assertStringNotContainsString('合計:', $text);
+        }
         Http::assertSent(function ($request) {
             if (! str_contains($request->url(), 'https://api.notion.com/')) {
                 return false;
