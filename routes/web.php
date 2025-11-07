@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [LedgerAuthController::class, 'show'])->name('ledger.login.form');
 Route::post('/logout', [LedgerAuthController::class, 'logout'])->name('ledger.logout');
+Route::post('/login/pin', [LedgerAuthController::class, 'authenticateWithPin'])->name('ledger.pin.login');
 
 Route::prefix('webauthn')->group(function (): void {
     Route::post('/register/options', [LedgerAuthController::class, 'beginRegistration'])->name('ledger.passkey.register.options');

@@ -29,8 +29,36 @@ class LedgerAuthController extends Controller
                 'register' => route('ledger.passkey.register.store'),
                 'login_options' => route('ledger.passkey.login.options'),
                 'login' => route('ledger.passkey.login.verify'),
+                'pin_login' => route('ledger.pin.login'),
+            ],
+            'pin' => [
+                'enabled' => $this->isPinLoginEnabled(),
             ],
         ]);
+    }
+
+    public function authenticateWithPin(Request $request): RedirectResponse
+    {
+        if (! $this->isPinLoginEnabled()) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'pin' => ['required', 'string'],
+        ]);
+
+        $expectedPin = (string) config('services.ledger_form.pin');
+
+        if ($expectedPin === '' || ! hash_equals($expectedPin, $validated['pin'])) {
+            throw ValidationException::withMessages([
+                'pin' => 'PINが一致しません。',
+            ]);
+        }
+
+        $request->session()->regenerate();
+        $request->session()->put('ledger_authenticated', true);
+
+        return redirect()->intended(route('adjustment.form'));
     }
 
     public function beginRegistration(Request $request): JsonResponse
@@ -247,6 +275,13 @@ class LedgerAuthController extends Controller
         }
 
         return $config;
+    }
+
+    private function isPinLoginEnabled(): bool
+    {
+        $pin = config('services.ledger_form.pin');
+
+        return is_string($pin) && $pin !== '';
     }
 
     private function encodeBase64Url(string $value): string

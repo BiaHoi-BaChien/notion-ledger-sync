@@ -103,6 +103,31 @@ class LedgerPasskeyAuthenticationTest extends TestCase
         $this->assertFalse(session()->get('ledger_authenticated', false));
     }
 
+    public function test_user_can_authenticate_with_pin(): void
+    {
+        config(['services.ledger_form.pin' => '2468']);
+
+        $response = $this->post(route('ledger.pin.login'), [
+            'pin' => '2468',
+        ]);
+
+        $response->assertRedirect(route('adjustment.form'));
+        $this->assertTrue(session()->get('ledger_authenticated'));
+    }
+
+    public function test_pin_authentication_fails_with_invalid_pin(): void
+    {
+        config(['services.ledger_form.pin' => '1357']);
+
+        $response = $this->from(route('ledger.login.form'))->post(route('ledger.pin.login'), [
+            'pin' => '9999',
+        ]);
+
+        $response->assertRedirect(route('ledger.login.form'));
+        $response->assertSessionHasErrors('pin');
+        $this->assertFalse(session()->get('ledger_authenticated', false));
+    }
+
     private function base64url(string $value): string
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
