@@ -174,11 +174,11 @@
             pointer-events: auto;
         }
         .status.success {
-            background: rgba(20, 184, 166, 0.12);
+            background: rgba(20, 184, 166, 0.3);
             color: #0f766e;
         }
         .status.error {
-            background: rgba(239, 68, 68, 0.12);
+            background: rgba(239, 68, 68, 0.3);
             color: #b91c1c;
         }
         .result-grid {
