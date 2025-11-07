@@ -251,8 +251,7 @@
     </header>
     <main>
         <section class="card">
-            <h2>現在の残高を入力してください</h2>
-            <p class="input-note">金額はすべてベトナムドン（VND）で入力してください。</p>
+            <h2>現在の銀行残高と手持ちの現金の金額を入力してください</h2>
             <form method="post" action="{{ route('adjustment.calculate') }}" class="calculate-form">
                 @csrf
                 <div class="inputs">
