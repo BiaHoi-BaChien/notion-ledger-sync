@@ -174,11 +174,11 @@
             pointer-events: auto;
         }
         .status.success {
-            background: rgba(20, 184, 166, 0.3);
+            background: rgba(20, 184, 166, 0.6);
             color: #0f766e;
         }
         .status.error {
-            background: rgba(239, 68, 68, 0.3);
+            background: rgba(239, 68, 68, 0.6);
             color: #b91c1c;
         }
         .result-grid {
@@ -331,6 +331,29 @@
                 {{ $status['message'] }}
             </div>
         </div>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const overlay = document.querySelector('.status-overlay');
+                if (!overlay) {
+                    return;
+                }
+
+                const statusElement = overlay.querySelector('.status');
+                if (!statusElement) {
+                    return;
+                }
+
+                if (statusElement.classList.contains('success')) {
+                    overlay.style.transition = 'opacity 0.3s ease';
+                    setTimeout(function () {
+                        overlay.style.opacity = '0';
+                        overlay.addEventListener('transitionend', function () {
+                            overlay.remove();
+                        }, { once: true });
+                    }, 5000);
+                }
+            });
+        </script>
     @endif
 </body>
 </html>
