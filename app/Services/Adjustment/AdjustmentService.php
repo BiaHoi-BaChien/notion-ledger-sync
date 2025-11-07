@@ -35,13 +35,15 @@ class AdjustmentService
             $total += (float) $amount;
         }
 
-        $adjustmentAmount = $bankBalance + $cashOnHand - $total;
+        $physicalTotal = $bankBalance + $cashOnHand;
+        $adjustmentAmount = $physicalTotal - $total;
 
         return new AdjustmentResult(
             $now,
             $targetMonthStart,
             (float) $bankBalance,
             (float) $cashOnHand,
+            (float) $physicalTotal,
             (float) $total,
             (float) $adjustmentAmount,
             self::TARGET_ACCOUNT
