@@ -76,6 +76,11 @@
             font-size: clamp(1.1rem, 3.8vw, 1.4rem);
             color: var(--text);
         }
+        .input-note {
+            margin: 0.3rem 0 1.1rem;
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
         .inputs {
             display: grid;
             gap: 1.25rem;
@@ -184,6 +189,18 @@
             font-weight: 700;
             color: var(--text);
         }
+        .calculation-summary {
+            margin-top: 1.25rem;
+            padding: 1.1rem 1.3rem;
+            border-radius: 1rem;
+            background: rgba(37, 99, 235, 0.08);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .calculation-summary strong {
+            display: inline-block;
+            margin-bottom: 0.35rem;
+        }
         .timestamp {
             margin-top: 1rem;
             font-size: 0.9rem;
@@ -219,6 +236,7 @@
     <main>
         <section class="card">
             <h2>現在の残高を入力してください</h2>
+            <p class="input-note">金額はすべてベトナムドン（VND）で入力してください。</p>
             <form method="post" action="{{ route('adjustment.calculate') }}" class="calculate-form">
                 @csrf
                 <div class="inputs">
@@ -252,26 +270,38 @@
                 @php
                     $formattedBank = number_format($result->bankBalance, 0, '.', ',');
                     $formattedCash = number_format($result->cashOnHand, 0, '.', ',');
-                    $formattedTotal = number_format($result->notionTotal, 0, '.', ',');
+                    $formattedPhysicalTotal = number_format($result->physicalTotal, 0, '.', ',');
+                    $formattedNotionTotal = number_format($result->notionTotal, 0, '.', ',');
                     $formattedAdjustment = number_format($result->adjustmentAmount, 0, '.', ',');
                 @endphp
                 <div class="result-grid">
                     <div class="result-item">
                         <span class="label">銀行口座残高</span>
-                        <span class="value">¥{{ $formattedBank }}</span>
+                        <span class="value">{{ $formattedBank }}₫</span>
                     </div>
                     <div class="result-item">
                         <span class="label">手持ち現金</span>
-                        <span class="value">¥{{ $formattedCash }}</span>
+                        <span class="value">{{ $formattedCash }}₫</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="label">銀行口座＋現金の実残高合計</span>
+                        <span class="value">{{ $formattedPhysicalTotal }}₫</span>
                     </div>
                     <div class="result-item">
                         <span class="label">Notion記録の合計 ({{ $result->accountName }})</span>
-                        <span class="value">¥{{ $formattedTotal }}</span>
+                        <span class="value">{{ $formattedNotionTotal }}₫</span>
                     </div>
                     <div class="result-item">
                         <span class="label">計算された調整額</span>
-                        <span class="value">¥{{ $formattedAdjustment }}</span>
+                        <span class="value">{{ $formattedAdjustment }}₫</span>
                     </div>
+                </div>
+                <div class="calculation-summary">
+                    <p>
+                        <strong>調整額 = 実残高合計 − Notion記録の合計</strong><br>
+                        ({{ $formattedPhysicalTotal }}₫ − {{ $formattedNotionTotal }}₫ = {{ $formattedAdjustment }}₫)
+                    </p>
+                    <p>入力した銀行口座残高と手持ち現金を合計した実残高と、Notionに記録された合計額との差額が調整額として算出されています。</p>
                 </div>
                 <p class="timestamp">
                     対象月: {{ $result->targetMonthStart->format('Y年n月') }} / 計算日時: {{ $result->calculatedAt->timezone(config('app.timezone'))->format('Y年n月j日 H:i') }}
