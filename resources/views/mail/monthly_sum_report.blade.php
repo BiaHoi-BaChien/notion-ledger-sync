@@ -6,3 +6,22 @@ Notion月次集計 {{ $result['year_month'] }} 完了
 @foreach($result['totals'] as $account => $amount)
 {{ $account }}: {{ number_format((float) $amount) }}
 @endforeach
+@if(!empty($result['carry_over_status']))
+繰越登録状況:
+@php
+    $carryOverSuccess = array_filter($result['carry_over_status'], fn ($entry) => ($entry['status'] ?? null) === 'success');
+    $carryOverFailure = array_filter($result['carry_over_status'], fn ($entry) => ($entry['status'] ?? null) === 'failure');
+@endphp
+@if(empty($carryOverFailure))
+・全件成功
+@else
+@if(!empty($carryOverSuccess))
+・成功: {{ implode(', ', array_map(function ($entry) {
+    $createdAt = $entry['created_at'] ?? null;
+
+    return $createdAt ? sprintf('%s(作成日: %s)', $entry['account'], $createdAt) : $entry['account'];
+}, $carryOverSuccess)) }}
+@endif
+・失敗: {{ implode(', ', array_map(fn ($entry) => $entry['account'], $carryOverFailure)) }}
+@endif
+@endif

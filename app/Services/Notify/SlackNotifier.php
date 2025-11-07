@@ -48,6 +48,44 @@ class SlackNotifier
 
         $lines[] = '件数: '.$result['records_count'];
 
+        if (! empty($result['carry_over_status'])) {
+            $lines[] = '繰越登録状況:';
+
+            $successEntries = array_filter(
+                $result['carry_over_status'],
+                static fn ($entry) => ($entry['status'] ?? null) === 'success'
+            );
+
+            $failureEntries = array_filter(
+                $result['carry_over_status'],
+                static fn ($entry) => ($entry['status'] ?? null) === 'failure'
+            );
+
+            if ($failureEntries === []) {
+                $lines[] = '・全件成功';
+            } else {
+                if ($successEntries !== []) {
+                    $lines[] = '・成功: '.implode(', ', array_map(
+                        static function ($entry) {
+                            $createdAt = $entry['created_at'] ?? null;
+
+                            if ($createdAt === null) {
+                                return $entry['account'];
+                            }
+
+                            return sprintf('%s(作成日: %s)', $entry['account'], $createdAt);
+                        },
+                        $successEntries
+                    ));
+                }
+
+                $lines[] = '・失敗: '.implode(', ', array_map(
+                    static fn ($entry) => $entry['account'],
+                    $failureEntries
+                ));
+            }
+        }
+
         return implode("\n", $lines);
     }
 }

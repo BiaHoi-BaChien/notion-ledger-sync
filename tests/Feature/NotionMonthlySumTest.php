@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\MonthlySumReport;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
@@ -23,8 +24,17 @@ class NotionMonthlySumTest extends TestCase
         Config::set('services.webhook.token', 'hook-token');
     }
 
+    protected function tearDown(): void
+    {
+        CarbonImmutable::setTestNow();
+
+        parent::tearDown();
+    }
+
     public function test_monthly_sum_success(): void
     {
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2025, 11, 30, 0, 0, 0, 'UTC'));
+
         Config::set('services.report.mail_to', 'notify@example.com');
         Config::set('services.slack.enabled', true);
         Config::set('services.slack.token', 'slack-token');
@@ -101,6 +111,8 @@ class NotionMonthlySumTest extends TestCase
             $this->assertStringContainsString("現金/普通預金: 800", $body);
             $this->assertStringContainsString("定期預金: 1,700", $body);
             $this->assertStringNotContainsString('合計:', $body);
+            $this->assertStringContainsString("繰越登録状況:", $body);
+            $this->assertStringContainsString("・全件成功", $body);
 
             return true;
         });
@@ -112,6 +124,18 @@ class NotionMonthlySumTest extends TestCase
         ], $sentMail->result['totals']);
         $this->assertSame(3, $sentMail->result['records_count']);
         $this->assertSame(2500.0, $sentMail->result['total_all']);
+        $this->assertSame([
+            [
+                'account' => '現金/普通預金',
+                'status' => 'success',
+                'created_at' => '2025-11-30T00:00:00+00:00',
+            ],
+            [
+                'account' => '定期預金',
+                'status' => 'success',
+                'created_at' => '2025-11-30T00:00:00+00:00',
+            ],
+        ], $sentMail->result['carry_over_status']);
 
         Http::assertSent(function ($request) {
             if ($request->url() !== 'https://slack.com/api/chat.postMessage') {
@@ -132,6 +156,8 @@ class NotionMonthlySumTest extends TestCase
             $this->assertStringContainsString("現金/普通預金: 800", $text);
             $this->assertStringContainsString("定期預金: 1,700", $text);
             $this->assertStringNotContainsString('合計:', $text);
+            $this->assertStringContainsString("繰越登録状況:", $text);
+            $this->assertStringContainsString("・全件成功", $text);
         }
         Http::assertSent(function ($request) {
             if (! str_contains($request->url(), 'https://api.notion.com/')) {
@@ -170,6 +196,97 @@ class NotionMonthlySumTest extends TestCase
                 $this->fail('Unexpected account in carry-over payload.');
             }
         }
+    }
+
+    public function test_monthly_sum_records_carry_over_failures(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2026, 1, 31, 12, 0, 0, 'UTC'));
+
+        Config::set('services.report.mail_to', 'notify@example.com');
+        Config::set('services.slack.enabled', true);
+        Config::set('services.slack.token', 'slack-token');
+        Config::set('services.slack.dm_user_ids', 'U1');
+        Config::set('services.slack.unfurl_links', false);
+        Config::set('services.slack.unfurl_media', false);
+
+        Mail::fake();
+        $carryOverRequests = [];
+
+        Http::fake([
+            'https://api.notion.com/v1/data_sources/ds123/query' => Http::response([
+                'results' => [
+                    [
+                        'properties' => [
+                            '口座' => ['select' => ['name' => '現金/普通預金']],
+                            '金額' => ['number' => 1000],
+                        ],
+                    ],
+                    [
+                        'properties' => [
+                            '口座' => ['select' => ['name' => '定期預金']],
+                            '金額' => ['number' => 2000],
+                        ],
+                    ],
+                ],
+                'has_more' => false,
+                'next_cursor' => null,
+            ]),
+            'https://api.notion.com/v1/pages' => function ($request) use (&$carryOverRequests) {
+                $carryOverRequests[] = $request;
+
+                if (count($carryOverRequests) === 1) {
+                    return Http::response(['object' => 'page'], 200);
+                }
+
+                return Http::response(['error' => 'rate_limited'], 500);
+            },
+            'https://slack.com/api/chat.postMessage' => Http::response(['ok' => true], 200),
+        ]);
+
+        $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
+            ->postJson('/api/notion/monthly-sum', ['year_month' => '2026-01']);
+
+        $response->assertNoContent();
+
+        $sentMail = null;
+        Mail::assertSent(MonthlySumReport::class, function (MonthlySumReport $mail) use (&$sentMail) {
+            $sentMail = $mail;
+
+            $body = $mail->render();
+            $this->assertStringContainsString('繰越登録状況:', $body);
+            $this->assertStringContainsString('・成功: 現金/普通預金(作成日: 2026-01-31T12:00:00+00:00)', $body);
+            $this->assertStringContainsString('・失敗: 定期預金', $body);
+
+            return true;
+        });
+
+        $this->assertNotNull($sentMail);
+        $this->assertSame([
+            [
+                'account' => '現金/普通預金',
+                'status' => 'success',
+                'created_at' => '2026-01-31T12:00:00+00:00',
+            ],
+            [
+                'account' => '定期預金',
+                'status' => 'failure',
+                'created_at' => null,
+            ],
+        ], $sentMail->result['carry_over_status']);
+
+        $slackRequests = Http::recorded(function ($request) {
+            return $request->url() === 'https://slack.com/api/chat.postMessage';
+        });
+
+        $this->assertCount(1, $slackRequests);
+
+        [$slackRequest] = $slackRequests;
+        $text = Arr::get($slackRequest->data(), 'text');
+        $this->assertStringContainsString('繰越登録状況:', $text);
+        $this->assertStringContainsString('・成功: 現金/普通預金(作成日: 2026-01-31T12:00:00+00:00)', $text);
+        $this->assertStringContainsString('・失敗: 定期預金', $text);
+
+        $this->assertCount(2, $carryOverRequests);
     }
 
     public function test_skips_notifications_when_disabled(): void
