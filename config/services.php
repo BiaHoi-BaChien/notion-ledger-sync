@@ -87,4 +87,7 @@ return [
     'webhook' => [
         'token' => env('WEBHOOK_TOKEN'),
     ],
+    'ledger_form' => [
+        'pin' => env('LEDGER_FORM_PIN'),
+    ],
 ];

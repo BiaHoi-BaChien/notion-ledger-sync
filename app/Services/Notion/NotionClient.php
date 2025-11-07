@@ -138,6 +138,70 @@ class NotionClient
             ->throw();
     }
 
+    public function createAdjustmentPage(
+        string $date,
+        string $type,
+        string $category,
+        string $summary,
+        float $amount,
+        string $account
+    ): void {
+        $databaseId = config('services.notion.database_id');
+        $token = config('services.notion.token');
+        $version = config('services.notion.version', '2025-09-03');
+
+        if (blank($token)) {
+            throw new RuntimeException('Notion API credentials are not configured.');
+        }
+
+        if (blank($databaseId)) {
+            throw new RuntimeException('Notion database ID is not configured.');
+        }
+
+        $headers = [
+            'Authorization' => 'Bearer '.$token,
+            'Notion-Version' => $version,
+            'Content-Type' => 'application/json',
+        ];
+
+        $payload = [
+            'parent' => [
+                'type' => 'database_id',
+                'database_id' => $databaseId,
+            ],
+            'properties' => [
+                '日付' => [
+                    'date' => [
+                        'start' => $date,
+                    ],
+                ],
+                '種類' => [
+                    'select' => ['name' => $type],
+                ],
+                'カテゴリー' => [
+                    'select' => ['name' => $category],
+                ],
+                '摘要' => [
+                    'title' => [[
+                        'text' => [
+                            'content' => $summary,
+                        ],
+                    ]],
+                ],
+                '金額入力' => [
+                    'number' => (float) $amount,
+                ],
+                '口座' => [
+                    'select' => ['name' => $account],
+                ],
+            ],
+        ];
+
+        Http::withHeaders($headers)
+            ->post('https://api.notion.com/v1/pages', $payload)
+            ->throw();
+    }
+
     private function resolveAmount(array $properties): ?float
     {
         $amount = Arr::get($properties, '金額.number');
