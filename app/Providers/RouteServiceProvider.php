@@ -16,9 +16,15 @@ class RouteServiceProvider extends ServiceProvider
                 ->prefix('api')
                 ->group(base_path('routes/api.php'));
 
-            Route::middleware('web')
-                ->prefix(config('app.url_prefix', ''))
-                ->group(base_path('routes/web.php'));
+            $webRoutes = Route::middleware('web');
+
+            $prefix = config('app.url_prefix', '');
+
+            if ($prefix !== '') {
+                $webRoutes = $webRoutes->prefix($prefix);
+            }
+
+            $webRoutes->group(base_path('routes/web.php'));
         });
     }
 }
