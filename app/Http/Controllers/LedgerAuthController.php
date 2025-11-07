@@ -7,8 +7,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 use RuntimeException;
 
 class LedgerAuthController extends Controller
@@ -29,29 +30,34 @@ class LedgerAuthController extends Controller
                 'register' => route('ledger.passkey.register.store'),
                 'login_options' => route('ledger.passkey.login.options'),
                 'login' => route('ledger.passkey.login.verify'),
-                'pin_login' => route('ledger.pin.login'),
+                'credentials_login' => route('ledger.credentials.login'),
             ],
-            'pin' => [
-                'enabled' => $this->isPinLoginEnabled(),
+            'credentials' => [
+                'enabled' => $this->isCredentialLoginEnabled(),
             ],
         ]);
     }
 
-    public function authenticateWithPin(Request $request): RedirectResponse
+    public function authenticateWithCredentials(Request $request): RedirectResponse
     {
-        if (! $this->isPinLoginEnabled()) {
+        if (! $this->isCredentialLoginEnabled()) {
             abort(404);
         }
 
         $validated = $request->validate([
-            'pin' => ['required', 'string'],
+            'username' => ['required', 'string'],
+            'password' => ['required', 'string'],
         ]);
 
-        $expectedPin = (string) config('services.ledger_form.pin');
+        $expectedUsernameHash = (string) config('services.ledger_form.username_hash', '');
+        $expectedPasswordHash = (string) config('services.ledger_form.password_hash', '');
 
-        if ($expectedPin === '' || ! hash_equals($expectedPin, $validated['pin'])) {
+        $usernameMatches = $expectedUsernameHash !== '' && Hash::check($validated['username'], $expectedUsernameHash);
+        $passwordMatches = $expectedPasswordHash !== '' && Hash::check($validated['password'], $expectedPasswordHash);
+
+        if (! $usernameMatches || ! $passwordMatches) {
             throw ValidationException::withMessages([
-                'pin' => 'PINが一致しません。',
+                'username' => 'ユーザー名またはパスワードが一致しません。',
             ]);
         }
 
@@ -277,11 +283,13 @@ class LedgerAuthController extends Controller
         return $config;
     }
 
-    private function isPinLoginEnabled(): bool
+    private function isCredentialLoginEnabled(): bool
     {
-        $pin = config('services.ledger_form.pin');
+        $usernameHash = config('services.ledger_form.username_hash');
+        $passwordHash = config('services.ledger_form.password_hash');
 
-        return is_string($pin) && $pin !== '';
+        return is_string($usernameHash) && $usernameHash !== ''
+            && is_string($passwordHash) && $passwordHash !== '';
     }
 
     private function encodeBase64Url(string $value): string

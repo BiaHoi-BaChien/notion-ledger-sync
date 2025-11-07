@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\TestCase;
 
@@ -105,28 +106,36 @@ class LedgerPasskeyAuthenticationTest extends TestCase
         $this->assertFalse(session()->get('ledger_authenticated', false));
     }
 
-    public function test_user_can_authenticate_with_pin(): void
+    public function test_user_can_authenticate_with_username_and_password(): void
     {
-        config(['services.ledger_form.pin' => '2468']);
+        config([
+            'services.ledger_form.username_hash' => Hash::make('sugi'),
+            'services.ledger_form.password_hash' => Hash::make('2468-password'),
+        ]);
 
-        $response = $this->post(route('ledger.pin.login'), [
-            'pin' => '2468',
+        $response = $this->post(route('ledger.credentials.login'), [
+            'username' => 'sugi',
+            'password' => '2468-password',
         ]);
 
         $response->assertRedirect(route('adjustment.form'));
         $this->assertTrue(session()->get('ledger_authenticated'));
     }
 
-    public function test_pin_authentication_fails_with_invalid_pin(): void
+    public function test_authentication_fails_with_invalid_credentials(): void
     {
-        config(['services.ledger_form.pin' => '1357']);
+        config([
+            'services.ledger_form.username_hash' => Hash::make('sugi'),
+            'services.ledger_form.password_hash' => Hash::make('correct-password'),
+        ]);
 
-        $response = $this->from(route('ledger.login.form'))->post(route('ledger.pin.login'), [
-            'pin' => '9999',
+        $response = $this->from(route('ledger.login.form'))->post(route('ledger.credentials.login'), [
+            'username' => 'sugi',
+            'password' => 'wrong-password',
         ]);
 
         $response->assertRedirect(route('ledger.login.form'));
-        $response->assertSessionHasErrors('pin');
+        $response->assertSessionHasErrors('username');
         $this->assertFalse(session()->get('ledger_authenticated', false));
     }
 

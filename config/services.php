@@ -88,7 +88,8 @@ return [
         'token' => env('WEBHOOK_TOKEN'),
     ],
     'ledger_form' => [
-        'pin' => env('LEDGER_FORM_PIN'),
+        'username_hash' => env('LEDGER_FORM_USERNAME_HASH', ''),
+        'password_hash' => env('LEDGER_FORM_PASSWORD_HASH', ''),
     ],
     'ledger_passkey' => (static function (): array {
         $appUrl = env('APP_URL', 'http://localhost');
