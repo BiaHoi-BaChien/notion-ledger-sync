@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\TestCase;
 
+#[RequiresPhpExtension('pdo_sqlite')]
 class LedgerPasskeyAuthenticationTest extends TestCase
 {
     use RefreshDatabase;
