@@ -87,4 +87,24 @@ return [
     'webhook' => [
         'token' => env('WEBHOOK_TOKEN'),
     ],
+    'ledger_form' => [
+        'username_hash' => env('LEDGER_FORM_USERNAME_HASH', ''),
+        'password_hash' => env('LEDGER_FORM_PASSWORD_HASH', ''),
+    ],
+    'ledger_passkey' => (static function (): array {
+        $appUrl = env('APP_URL', 'http://localhost');
+        $host = parse_url($appUrl, PHP_URL_HOST);
+
+        if (! is_string($host) || $host === '') {
+            $host = 'localhost';
+        }
+
+        return [
+            'rp_id' => env('LEDGER_PASSKEY_RP_ID', $host),
+            'rp_name' => env('LEDGER_PASSKEY_RP_NAME', env('APP_NAME', 'Ledger Form')), 
+            'user_name' => env('LEDGER_PASSKEY_USER_NAME', 'ledger-form'),
+            'user_display_name' => env('LEDGER_PASSKEY_USER_DISPLAY_NAME', 'Ledger Form Operator'),
+            'user_handle' => env('LEDGER_PASSKEY_USER_HANDLE', 'ledger-form-user'),
+        ];
+    })(),
 ];
