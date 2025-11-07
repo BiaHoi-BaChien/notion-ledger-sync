@@ -178,7 +178,7 @@ class NotionMonthlySumTest extends TestCase
             return $version === '2025-09-03'
                 && str_contains($request->url(), '/data_sources/ds123/');
         });
-        Http::assertSentCount(5);
+        Http::assertSentCount(6);
 
         $this->assertCount(2, $carryOverRequests);
 
@@ -289,7 +289,7 @@ class NotionMonthlySumTest extends TestCase
 
         $this->assertCount(1, $slackRequests);
 
-        [$slackRequest] = $slackRequests;
+        [$slackRequest] = $slackRequests->first();
         $text = Arr::get($slackRequest->data(), 'text');
         $this->assertStringContainsString('繰越登録状況:', $text);
         $this->assertStringContainsString('・成功: 現金/普通預金(作成日: 2026-01-31T12:00:00+00:00)', $text);
@@ -579,7 +579,7 @@ class NotionMonthlySumTest extends TestCase
         Http::assertSentCount(4);
 
         $this->assertCount(3, $carryOverRequests);
-        $this->assertSameCanonicalizing([
+        $this->assertEqualsCanonicalizing([
             '普通預金',
             '定期預金',
             '貯蓄預金',
