@@ -49,8 +49,25 @@ class MonthlySumService
 
         $carryOverDate = $start->addMonth()->toDateString();
 
+        $carryOverStatus = [];
+        $createdAt = CarbonImmutable::now('UTC')->toIso8601String();
+
         foreach ($totals as $account => $amount) {
-            $this->notion->createCarryOverPage($account, (float) $amount, $carryOverDate);
+            try {
+                $this->notion->createCarryOverPage($account, (float) $amount, $carryOverDate);
+
+                $carryOverStatus[] = [
+                    'account' => $account,
+                    'status' => 'success',
+                    'created_at' => $createdAt,
+                ];
+            } catch (\Throwable $e) {
+                $carryOverStatus[] = [
+                    'account' => $account,
+                    'status' => 'failure',
+                    'created_at' => null,
+                ];
+            }
         }
 
         $totalAll = array_sum($totals);
@@ -64,6 +81,7 @@ class MonthlySumService
             'totals' => $totals,
             'total_all' => $totalAll,
             'records_count' => $count,
+            'carry_over_status' => $carryOverStatus,
         ];
     }
 }
