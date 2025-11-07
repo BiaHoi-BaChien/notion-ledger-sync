@@ -157,6 +157,22 @@
             padding: 1rem 1.2rem;
             font-weight: 600;
         }
+        .status-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .status-overlay .status {
+            margin-top: 0;
+            min-width: min(90%, 360px);
+            text-align: center;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+            pointer-events: auto;
+        }
         .status.success {
             background: rgba(20, 184, 166, 0.12);
             color: #0f766e;
@@ -307,12 +323,14 @@
                     対象月: {{ $result->targetMonthStart->format('Y年n月') }} / 計算日時: {{ $result->calculatedAt->timezone(config('app.timezone'))->format('Y年n月j日 H:i') }}
                 </p>
             @endif
-            @if ($status)
-                <div class="status {{ $status['success'] ? 'success' : 'error' }}" role="status">
-                    {{ $status['message'] }}
-                </div>
-            @endif
         </section>
     </main>
+    @if ($status)
+        <div class="status-overlay">
+            <div class="status {{ $status['success'] ? 'success' : 'error' }}" role="status">
+                {{ $status['message'] }}
+            </div>
+        </div>
+    @endif
 </body>
 </html>
