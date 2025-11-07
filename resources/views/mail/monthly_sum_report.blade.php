@@ -6,4 +6,3 @@ Notion月次集計 {{ $result['year_month'] }} 完了
 @foreach($result['totals'] as $account => $amount)
 {{ $account }}: {{ number_format((float) $amount) }}
 @endforeach
-合計: {{ number_format((float) $result['total_all']) }}
