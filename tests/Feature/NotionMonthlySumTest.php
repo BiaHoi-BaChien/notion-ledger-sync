@@ -13,10 +13,13 @@ use Tests\TestCase;
 
 class NotionMonthlySumTest extends TestCase
 {
+    private string $originalTimezone;
+
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->originalTimezone = Config::get('app.timezone', 'UTC');
         Config::set('services.notion.token', 'test-token');
         Config::set('services.notion.data_source_id', 'ds123');
         Config::set('services.notion.database_id', 'carryover-db');
@@ -26,6 +29,8 @@ class NotionMonthlySumTest extends TestCase
 
     protected function tearDown(): void
     {
+        Config::set('app.timezone', $this->originalTimezone);
+        Carbon::setTestNow();
         CarbonImmutable::setTestNow();
 
         parent::tearDown();
@@ -34,6 +39,9 @@ class NotionMonthlySumTest extends TestCase
     public function test_monthly_sum_success(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::create(2025, 11, 30, 0, 0, 0, 'UTC'));
+
+        Config::set('app.timezone', 'Asia/Tokyo');
+        Carbon::setTestNow(Carbon::create(2025, 11, 30, 0, 0, 0, 'UTC'));
 
         Config::set('services.report.mail_to', 'notify@example.com');
         Config::set('services.slack.enabled', true);
@@ -107,7 +115,8 @@ class NotionMonthlySumTest extends TestCase
             $sentMail = $mail;
 
             $body = $mail->render();
-            $this->assertStringContainsString("件数: 3", $body);
+            $this->assertStringContainsString('実行時刻: 2025-11-30 09:00:00 JST', $body);
+            $this->assertStringNotContainsString('件数:', $body);
             $this->assertStringContainsString("現金/普通預金: 800", $body);
             $this->assertStringContainsString("定期預金: 1,700", $body);
             $this->assertStringNotContainsString('合計:', $body);
