@@ -77,23 +77,23 @@
             border-top: 1px solid rgba(148, 163, 184, 0.4);
             margin: 2rem 0 1.5rem;
         }
-        .pin-login {
+        .credentials-login {
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
         }
-        .pin-login h2 {
+        .credentials-login h2 {
             margin: 0;
             font-size: 1.1rem;
             color: #1f2937;
         }
-        .pin-label {
+        .credentials-label {
             display: block;
             font-size: 0.9rem;
             font-weight: 600;
             color: #374151;
         }
-        .pin-input {
+        .credentials-input {
             width: 100%;
             padding: 0.85rem;
             border-radius: 0.75rem;
@@ -101,15 +101,15 @@
             font-size: 1rem;
             box-sizing: border-box;
         }
-        .pin-input:focus {
+        .credentials-input:focus {
             outline: none;
             border-color: #6366f1;
             box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
         }
-        .pin-button {
+        .credentials-button {
             margin-top: 0;
         }
-        .pin-error {
+        .credentials-error {
             margin: 0;
             color: #b91c1c;
             font-size: 0.9rem;
@@ -136,28 +136,41 @@
         <p class="note">初回は「パスキーを登録」で端末のパスキーを保存し、次回以降は「パスキーでログイン」で生体認証またはデバイス認証を行ってください。</p>
         <div id="status" role="status" aria-live="polite"></div>
 
-        @if ($pin['enabled'])
+        @if ($credentials['enabled'])
             <hr class="separator" aria-hidden="true">
-            <div class="pin-login" aria-labelledby="pin-login-title">
-                <h2 id="pin-login-title">PCなどからログインする場合</h2>
-                <p class="note">パスキーが利用できない端末では、事前に共有されたPINコードでログインできます。</p>
-                <form method="POST" action="{{ $routes['pin_login'] }}" novalidate>
+            <div class="credentials-login" aria-labelledby="credentials-login-title">
+                <h2 id="credentials-login-title">PCなどからログインする場合</h2>
+                <p class="note">パスキーが利用できない端末では、事前に共有されたユーザー名とパスワードでログインできます。</p>
+                <form method="POST" action="{{ $routes['credentials_login'] }}" novalidate>
                     @csrf
-                    <label class="pin-label" for="pin">PINコード</label>
+                    <label class="credentials-label" for="username">ユーザー名</label>
                     <input
-                        type="password"
-                        id="pin"
-                        name="pin"
-                        inputmode="numeric"
-                        autocomplete="one-time-code"
-                        pattern="[0-9]*"
-                        class="pin-input"
+                        type="text"
+                        id="username"
+                        name="username"
+                        value="{{ old('username') }}"
+                        autocomplete="username"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        class="credentials-input"
                         required
                     >
-                    @error('pin')
-                        <p class="pin-error" role="alert">{{ $message }}</p>
+                    @error('username')
+                        <p class="credentials-error" role="alert">{{ $message }}</p>
                     @enderror
-                    <button type="submit" class="pin-button">PINでログイン</button>
+                    <label class="credentials-label" for="password">パスワード</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        autocomplete="current-password"
+                        class="credentials-input"
+                        required
+                    >
+                    @error('password')
+                        <p class="credentials-error" role="alert">{{ $message }}</p>
+                    @enderror
+                    <button type="submit" class="credentials-button">ログイン</button>
                 </form>
             </div>
         @endif
