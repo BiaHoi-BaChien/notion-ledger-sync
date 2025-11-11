@@ -16,7 +16,7 @@ Route::prefix('webauthn')->group(function (): void {
 });
 
 Route::middleware('ledger.auth')->group(function () {
-    Route::get('/', [LedgerAdjustmentController::class, 'show'])->name('adjustment.form');
+    Route::match(['get', 'post'], '/', [LedgerAdjustmentController::class, 'show'])->name('adjustment.form');
     Route::post('/calculate', [LedgerAdjustmentController::class, 'calculate'])->name('adjustment.calculate');
     Route::post('/register', [LedgerAdjustmentController::class, 'register'])->name('adjustment.register');
 });
