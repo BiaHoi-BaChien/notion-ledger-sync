@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
+use Throwable;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -16,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->ensureSqliteDatabaseFileExists();
+        $this->ensureLedgerCredentialsTableExists();
     }
 
     private function ensureSqliteDatabaseFileExists(): void
@@ -42,6 +46,28 @@ class AppServiceProvider extends ServiceProvider
 
         if (! File::exists($database)) {
             File::put($database, '');
+        }
+    }
+
+    private function ensureLedgerCredentialsTableExists(): void
+    {
+        if (app()->runningInConsole()) {
+            return;
+        }
+
+        if ($this->ledgerCredentialsTableExists()) {
+            return;
+        }
+
+        Artisan::call('migrate', ['--force' => true]);
+    }
+
+    private function ledgerCredentialsTableExists(): bool
+    {
+        try {
+            return Schema::hasTable('ledger_credentials');
+        } catch (Throwable) {
+            return false;
         }
     }
 
