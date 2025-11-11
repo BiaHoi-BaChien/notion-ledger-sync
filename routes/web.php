@@ -9,8 +9,10 @@ Route::post('/logout', [LedgerAuthController::class, 'logout'])->name('ledger.lo
 Route::post('/login/credentials', [LedgerAuthController::class, 'authenticateWithCredentials'])->name('ledger.credentials.login');
 
 Route::prefix('webauthn')->group(function (): void {
-    Route::post('/register/options', [LedgerAuthController::class, 'beginRegistration'])->name('ledger.passkey.register.options');
-    Route::post('/register', [LedgerAuthController::class, 'finishRegistration'])->name('ledger.passkey.register.store');
+    Route::middleware('ledger.auth')->group(function (): void {
+        Route::post('/register/options', [LedgerAuthController::class, 'beginRegistration'])->name('ledger.passkey.register.options');
+        Route::post('/register', [LedgerAuthController::class, 'finishRegistration'])->name('ledger.passkey.register.store');
+    });
     Route::post('/authenticate/options', [LedgerAuthController::class, 'beginAuthentication'])->name('ledger.passkey.login.options');
     Route::post('/authenticate', [LedgerAuthController::class, 'finishAuthentication'])->name('ledger.passkey.login.verify');
 });
