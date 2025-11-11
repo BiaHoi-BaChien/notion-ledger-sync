@@ -56,13 +56,13 @@ class AdjustmentServiceTest extends TestCase
     }
 
     /**
-     * @return array<string, array{adjustment: float, type: string}>
+     * @return array<string, array{adjustment: float, expectedType: string}>
      */
     public static function adjustmentTypeProvider(): array
     {
         return [
-            'positive adjustment treated as income' => ['adjustment' => 1425.5, 'type' => '収入'],
-            'negative adjustment treated as expense' => ['adjustment' => -987.65, 'type' => '支出'],
+            'positive adjustment treated as income' => ['adjustment' => 1425.5, 'expectedType' => '収入'],
+            'negative adjustment treated as expense' => ['adjustment' => -987.65, 'expectedType' => '支出'],
         ];
     }
 
