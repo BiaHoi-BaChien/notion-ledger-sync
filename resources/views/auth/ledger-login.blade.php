@@ -62,6 +62,11 @@
         button:hover {
             box-shadow: 0 10px 25px rgba(67, 56, 202, 0.25);
         }
+        button[aria-disabled="true"] {
+            cursor: not-allowed;
+            opacity: 0.6;
+            box-shadow: none;
+        }
         .actions {
             display: flex;
             flex-direction: column;
@@ -72,6 +77,9 @@
             font-size: 0.9rem;
             color: #6b7280;
             line-height: 1.5;
+        }
+        .note-warning {
+            color: #b91c1c;
         }
         .separator {
             border: none;
@@ -134,6 +142,9 @@
             <button type="button" id="register-button">パスキーを登録</button>
             <button type="button" id="login-button">パスキーでログイン</button>
         </div>
+        @if (! $ledgerAuthenticated)
+            <p class="note note-warning" role="alert">パスキーを登録するには、先にユーザー名とパスワードでログインしてください。</p>
+        @endif
         <p class="note">初回は「パスキーを登録」で端末のパスキーを保存し、次回以降は「パスキーでログイン」で生体認証またはデバイス認証を行ってください。</p>
         <div id="status" role="status" aria-live="polite"></div>
 
@@ -179,6 +190,7 @@
     <script>
         const routes = @json($routes);
         const passkeyConfig = @json($passkey);
+        const ledgerAuthenticated = @json($ledgerAuthenticated);
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         const statusElement = document.getElementById('status');
@@ -193,7 +205,16 @@
             loginButton.disabled = true;
         }
 
+        if (!ledgerAuthenticated && registerButton) {
+            registerButton.setAttribute('aria-disabled', 'true');
+        }
+
         registerButton?.addEventListener('click', async () => {
+            if (!ledgerAuthenticated) {
+                setStatus('パスキーを登録するには、先にユーザー名とパスワードでログインしてください。', true);
+                return;
+            }
+
             await withProcessing(registerButton, async () => {
                 setStatus('パスキー登録オプションを取得しています…');
                 const options = await postJson(routes.register_options, {});

@@ -42,6 +42,7 @@ class LedgerAuthController extends Controller
             'credentials' => [
                 'enabled' => $this->isCredentialLoginEnabled(),
             ],
+            'ledgerAuthenticated' => $request->session()->get('ledger_authenticated', false),
         ]);
     }
 
@@ -76,6 +77,10 @@ class LedgerAuthController extends Controller
 
     public function beginRegistration(Request $request): JsonResponse
     {
+        if (! $request->session()->get('ledger_authenticated', false)) {
+            abort(403, 'パスキーを登録するには先にログインしてください。');
+        }
+
         $config = $this->getPasskeyConfig();
 
         $challenge = $this->encodeBase64Url(random_bytes(32));
@@ -115,6 +120,10 @@ class LedgerAuthController extends Controller
 
     public function finishRegistration(Request $request): JsonResponse
     {
+        if (! $request->session()->get('ledger_authenticated', false)) {
+            abort(403, 'パスキーを登録するには先にログインしてください。');
+        }
+
         $config = $this->getPasskeyConfig();
 
         $validated = $request->validate([

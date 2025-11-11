@@ -12,9 +12,24 @@ class LedgerPasskeyAuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_registration_options_requires_authentication(): void
+    {
+        $this->postJson(route('ledger.passkey.register.options'))
+            ->assertStatus(302)
+            ->assertRedirect(route('ledger.login.form'));
+    }
+
+    public function test_registration_requires_authentication(): void
+    {
+        $this->postJson(route('ledger.passkey.register.store'), [])
+            ->assertStatus(302)
+            ->assertRedirect(route('ledger.login.form'));
+    }
+
     public function test_user_can_register_and_authenticate_with_passkey(): void
     {
-        $registerOptions = $this->postJson(route('ledger.passkey.register.options'))
+        $registerOptions = $this->withSession(['ledger_authenticated' => true])
+            ->postJson(route('ledger.passkey.register.options'))
             ->assertOk()
             ->json();
 
@@ -99,7 +114,8 @@ class LedgerPasskeyAuthenticationTest extends TestCase
     #[RequiresPhpExtension('openssl')]
     public function test_user_can_authenticate_with_es256_passkey(): void
     {
-        $registerOptions = $this->postJson(route('ledger.passkey.register.options'))
+        $registerOptions = $this->withSession(['ledger_authenticated' => true])
+            ->postJson(route('ledger.passkey.register.options'))
             ->assertOk()
             ->json();
 
@@ -176,7 +192,8 @@ class LedgerPasskeyAuthenticationTest extends TestCase
 
     public function test_authentication_fails_with_mismatched_challenge(): void
     {
-        $registerOptions = $this->postJson(route('ledger.passkey.register.options'))
+        $registerOptions = $this->withSession(['ledger_authenticated' => true])
+            ->postJson(route('ledger.passkey.register.options'))
             ->assertOk()
             ->json();
 
