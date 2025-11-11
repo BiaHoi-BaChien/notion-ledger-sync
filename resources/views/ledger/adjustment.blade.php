@@ -117,12 +117,14 @@
         }
         .register-form {
             margin-top: 0.75rem;
+            width: 100%;
             display: flex;
             flex-wrap: wrap;
             gap: 0.75rem;
         }
         .register-form button {
             flex: 1 1 220px;
+            width: 100%;
         }
         .primary-btn,
         .secondary-btn {
@@ -175,12 +177,12 @@
             pointer-events: auto;
         }
         .status.success {
-            background: rgba(20, 184, 166, 0.6);
-            color: #0f766e;
+            background: #14b8a6;
+            color: #0f172a;
         }
         .status.error {
-            background: rgba(239, 68, 68, 0.6);
-            color: #b91c1c;
+            background: #ef4444;
+            color: #fff;
         }
         .result-grid {
             display: grid;
@@ -275,14 +277,6 @@
                 </div>
             </form>
             @if ($result)
-                <form method="post" action="{{ route('adjustment.register') }}" class="register-form">
-                    @csrf
-                    <input type="hidden" name="bank_balance" value="{{ $inputs['bank_balance'] }}">
-                    <input type="hidden" name="cash_on_hand" value="{{ $inputs['cash_on_hand'] }}">
-                    <button class="secondary-btn" type="submit">調整額を家計簿に登録</button>
-                </form>
-            @endif
-            @if ($result)
                 @php
                     $formattedBank = number_format($result->bankBalance, 0, '.', ',');
                     $formattedCash = number_format($result->cashOnHand, 0, '.', ',');
@@ -310,6 +304,12 @@
                     <div class="result-item">
                         <span class="label">計算された調整額</span>
                         <span class="value">{{ $formattedAdjustment }}₫</span>
+                        <form method="post" action="{{ route('adjustment.register') }}" class="register-form">
+                            @csrf
+                            <input type="hidden" name="bank_balance" value="{{ $inputs['bank_balance'] }}">
+                            <input type="hidden" name="cash_on_hand" value="{{ $inputs['cash_on_hand'] }}">
+                            <button class="secondary-btn" type="submit">調整額を家計簿に登録</button>
+                        </form>
                     </div>
                 </div>
                 <div class="calculation-summary">
