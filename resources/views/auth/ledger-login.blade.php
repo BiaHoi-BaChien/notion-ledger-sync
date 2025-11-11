@@ -349,6 +349,13 @@
         }
 
         function handleError(error) {
+            if (error?.name === 'InvalidStateError'
+                || typeof error?.message === 'string' && error.message.includes('credential manager')
+            ) {
+                setStatus('この端末には既にパスキーが登録されています。「パスキーでログイン」をお試しください。');
+                return;
+            }
+
             if (error?.name === 'NotAllowedError') {
                 setStatus('認証がキャンセルされました。もう一度お試しください。', true);
                 return;
