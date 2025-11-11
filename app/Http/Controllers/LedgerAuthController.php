@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\LedgerCredential;
+use App\Services\WebAuthn\AssertionValidator;
+use App\Services\WebAuthn\Exceptions\AssertionValidationException;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -14,6 +16,10 @@ use RuntimeException;
 
 class LedgerAuthController extends Controller
 {
+    public function __construct(private readonly AssertionValidator $assertionValidator)
+    {
+    }
+
     public function show(Request $request): View|RedirectResponse
     {
         if ($request->session()->get('ledger_authenticated', false)) {
@@ -241,6 +247,26 @@ class LedgerAuthController extends Controller
             ]);
         }
 
+        try {
+            $this->assertionValidator->validate(
+                $credential,
+                [
+                    'clientDataJSON' => $validated['response']['clientDataJSON'],
+                    'authenticatorData' => $validated['response']['authenticatorData'],
+                    'signature' => $validated['response']['signature'],
+                ],
+                [
+                    'challenge' => $validated['challenge'],
+                    'rp_id' => $config['rp_id'],
+                    'origin' => $this->resolveExpectedOrigin($request),
+                ]
+            );
+        } catch (AssertionValidationException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
         $newSignCount = $validated['signCount'] ?? null;
 
         if ($newSignCount !== null && $newSignCount < $credential->sign_count) {
@@ -312,5 +338,28 @@ class LedgerAuthController extends Controller
         }
 
         return $decoded;
+    }
+
+    private function resolveExpectedOrigin(Request $request): ?string
+    {
+        $originHeader = $request->headers->get('origin');
+
+        if (is_string($originHeader) && $originHeader !== '') {
+            return rtrim($originHeader, '/');
+        }
+
+        $appUrl = config('app.url');
+
+        if (is_string($appUrl) && $appUrl !== '') {
+            return rtrim($appUrl, '/');
+        }
+
+        $schemeAndHost = $request->getSchemeAndHttpHost();
+
+        if ($schemeAndHost === '') {
+            return null;
+        }
+
+        return rtrim($schemeAndHost, '/');
     }
 }
