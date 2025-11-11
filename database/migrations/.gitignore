@@ -1,3 +1,4 @@
 *
 !.gitignore
 !2024_01_01_000000_create_ledger_credentials_table.php
+!2025_02_14_000000_add_public_key_algorithm_to_ledger_credentials_table.php

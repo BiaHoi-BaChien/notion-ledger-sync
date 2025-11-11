@@ -16,6 +16,7 @@ class LedgerCredential extends Model
         'transports',
         'attestation_type',
         'public_key',
+        'public_key_algorithm',
         'sign_count',
         'last_used_at',
     ];
@@ -23,6 +24,7 @@ class LedgerCredential extends Model
     protected $casts = [
         'transports' => 'array',
         'sign_count' => 'int',
+        'public_key_algorithm' => 'int',
         'last_used_at' => 'datetime',
     ];
 }
