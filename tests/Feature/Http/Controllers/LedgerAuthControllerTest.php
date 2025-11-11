@@ -31,10 +31,13 @@ class LedgerAuthControllerTest extends TestCase
         $publicKey = sodium_crypto_sign_publickey($keyPair);
         $secretKey = sodium_crypto_sign_secretkey($keyPair);
 
+        $publicKeyDer = $this->ed25519PublicKeyToDer($publicKey);
+
         $credential = LedgerCredential::factory()->create([
             'user_handle' => 'ledger-form-user',
             'credential_id' => 'credential-123',
-            'public_key' => base64_encode($publicKey),
+            'public_key' => base64_encode($publicKeyDer),
+            'public_key_algorithm' => -8,
             'sign_count' => 5,
         ]);
 
@@ -117,10 +120,13 @@ class LedgerAuthControllerTest extends TestCase
         $publicKey = sodium_crypto_sign_publickey($keyPair);
         $secretKey = sodium_crypto_sign_secretkey($keyPair);
 
+        $publicKeyDer = $this->ed25519PublicKeyToDer($publicKey);
+
         $credential = LedgerCredential::factory()->create([
             'user_handle' => 'ledger-form-user',
             'credential_id' => 'credential-456',
-            'public_key' => base64_encode($publicKey),
+            'public_key' => base64_encode($publicKeyDer),
+            'public_key_algorithm' => -8,
             'sign_count' => 2,
         ]);
 
@@ -181,5 +187,12 @@ class LedgerAuthControllerTest extends TestCase
     private function encodeBase64Url(string $value): string
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+    }
+
+    private function ed25519PublicKeyToDer(string $publicKey): string
+    {
+        $prefix = hex2bin('302a300506032b6570032100');
+
+        return ($prefix ?? '') . $publicKey;
     }
 }

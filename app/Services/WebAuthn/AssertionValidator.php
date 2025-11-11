@@ -111,39 +111,122 @@ class AssertionValidator
 
     private function verifySignature(LedgerCredential $credential, string $authenticatorData, string $clientDataJson, string $signature): void
     {
-        if (! function_exists('sodium_crypto_sign_verify_detached')) {
-            throw new AssertionValidationException('署名検証に必要なライブラリが利用できません。');
-        }
+        $publicKeyMaterial = $this->decodePublicKeyMaterial($credential->public_key);
 
-        $publicKey = $this->resolvePublicKey($credential->public_key);
+        if ($publicKeyMaterial === '') {
+            throw new AssertionValidationException('サポートされていない公開鍵形式です。');
+        }
 
         $clientDataHash = hash('sha256', $clientDataJson, true);
         $signedData = $authenticatorData . $clientDataHash;
 
-        $isValid = sodium_crypto_sign_verify_detached($signature, $signedData, $publicKey);
+        $algorithm = $credential->public_key_algorithm ?? -8;
 
-        if (! $isValid) {
+        if ($algorithm === -8) {
+            $this->verifyEd25519Signature($publicKeyMaterial, $signedData, $signature);
+
+            return;
+        }
+
+        if (in_array($algorithm, [-7, -257], true)) {
+            if (! defined('OPENSSL_ALGO_SHA256')) {
+                throw new AssertionValidationException('署名検証に必要なライブラリが利用できません。');
+            }
+
+            $this->verifyOpensslSignature($publicKeyMaterial, $signedData, $signature, OPENSSL_ALGO_SHA256);
+
+            return;
+        }
+
+        throw new AssertionValidationException('サポートされていない公開鍵形式です。');
+    }
+
+    private function decodePublicKeyMaterial(string $stored): string
+    {
+        $decoded = base64_decode($stored, true);
+
+        if ($decoded !== false && $decoded !== '') {
+            return $decoded;
+        }
+
+        $decoded = $this->decodeBase64Url($stored);
+
+        if ($decoded !== '') {
+            return $decoded;
+        }
+
+        return $this->decodePemPublicKey($stored);
+    }
+
+    private function verifyEd25519Signature(string $publicKeyMaterial, string $signedData, string $signature): void
+    {
+        if (! function_exists('sodium_crypto_sign_verify_detached')) {
+            throw new AssertionValidationException('署名検証に必要なライブラリが利用できません。');
+        }
+
+        $publicKey = $this->extractEd25519PublicKey($publicKeyMaterial);
+
+        if ($publicKey === null) {
+            throw new AssertionValidationException('サポートされていない公開鍵形式です。');
+        }
+
+        if (! sodium_crypto_sign_verify_detached($signature, $signedData, $publicKey)) {
             throw new AssertionValidationException('署名検証に失敗しました。');
         }
     }
 
-    private function resolvePublicKey(string $stored): string
+    private function verifyOpensslSignature(string $publicKeyMaterial, string $signedData, string $signature, int $algorithm): void
     {
-        $decoded = base64_decode($stored, true);
-
-        if ($decoded === false || $decoded === '') {
-            $decoded = $this->decodeBase64Url($stored);
+        if (! function_exists('openssl_verify')) {
+            throw new AssertionValidationException('署名検証に必要なライブラリが利用できません。');
         }
 
-        if ($decoded === '') {
-            $decoded = $this->decodePemPublicKey($stored);
-        }
+        $pem = $this->convertDerToPem($publicKeyMaterial);
 
-        if ($decoded === '' || strlen($decoded) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+        if ($pem === null) {
             throw new AssertionValidationException('サポートされていない公開鍵形式です。');
         }
 
-        return $decoded;
+        $result = openssl_verify($signedData, $signature, $pem, $algorithm);
+
+        if ($result !== 1) {
+            throw new AssertionValidationException('署名検証に失敗しました。');
+        }
+    }
+
+    private function extractEd25519PublicKey(string $publicKeyMaterial): ?string
+    {
+        if (strlen($publicKeyMaterial) === SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
+            return $publicKeyMaterial;
+        }
+
+        $prefix = hex2bin('302a300506032b6570032100');
+
+        if ($prefix !== false
+            && str_starts_with($publicKeyMaterial, $prefix)
+            && strlen($publicKeyMaterial) === strlen($prefix) + SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES
+        ) {
+            return substr($publicKeyMaterial, -SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES);
+        }
+
+        return null;
+    }
+
+    private function convertDerToPem(string $publicKeyMaterial): ?string
+    {
+        if ($publicKeyMaterial === '') {
+            return null;
+        }
+
+        $encoded = base64_encode($publicKeyMaterial);
+
+        if ($encoded === false || $encoded === '') {
+            return null;
+        }
+
+        $chunks = trim(chunk_split($encoded, 64, "\n"));
+
+        return sprintf("-----BEGIN PUBLIC KEY-----%s%s%s-----END PUBLIC KEY-----", PHP_EOL, $chunks, PHP_EOL);
     }
 
     private function decodePemPublicKey(string $stored): string

@@ -209,6 +209,10 @@
                     throw new Error('取得したパスキーの公開鍵を処理できません。別のブラウザをお試しください。');
                 }
 
+                const publicKeyAlgorithm = typeof credential.response.getPublicKeyAlgorithm === 'function'
+                    ? credential.response.getPublicKeyAlgorithm()
+                    : -8;
+
                 const transports = typeof credential.response.getTransports === 'function'
                     ? credential.response.getTransports()
                     : [];
@@ -221,6 +225,7 @@
                         clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
                         attestationObject: bufferToBase64Url(credential.response.attestationObject),
                         publicKey: bufferToBase64Url(exportedPublicKey),
+                        publicKeyAlgorithm,
                     },
                     clientExtensionResults: credential.getClientExtensionResults?.() ?? {},
                     transports,
