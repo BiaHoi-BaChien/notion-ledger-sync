@@ -49,6 +49,18 @@ SLACK_DM_USER_IDS=
 SLACK_UNFURL_LINKS=false
 SLACK_UNFURL_MEDIA=false
 
+### Ledger 調整フォームの認証情報
+
+ウェブフォームのログイン名・パスワードはプレーンテキストではなく、`bcrypt` でハッシュ化した値を `.env` に設定します。
+以下のように PHP のワンライナーで生成できます。
+
+```bash
+php -r "echo password_hash('希望するログイン名', PASSWORD_BCRYPT), PHP_EOL;"
+php -r "echo password_hash('希望するパスワード', PASSWORD_BCRYPT), PHP_EOL;"
+```
+
+生成した 2 つの値をそれぞれ `LEDGER_FORM_USERNAME_HASH` と `LEDGER_FORM_PASSWORD_HASH` に設定してください。
+
 ## サブディレクトリ配下にデプロイする場合
 
 WordPress などと同じドキュメントルートを共有しながら `/api/notion_webform` や `/api/notion_webhook` のようなサブディレクトリ配下に配置する場合は、以下の 2 点を追加で設定します。
