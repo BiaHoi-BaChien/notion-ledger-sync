@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/../app/Support/sodium_polyfill.php';
+
 use App\Http\Middleware\EnsureLedgerAuthenticated;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
