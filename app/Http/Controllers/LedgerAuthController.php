@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use RuntimeException;
@@ -198,28 +199,43 @@ class LedgerAuthController extends Controller
     {
         $config = $this->getPasskeyConfig();
 
-        $validated = $request->validate([
-            'id' => ['required', 'string'],
-            'rawId' => ['required', 'string'],
-            'type' => ['required', 'string', 'in:public-key'],
-            'challenge' => ['required', 'string'],
-            'signCount' => ['nullable', 'integer', 'min:0'],
-            'response' => ['required', 'array'],
-            'response.clientDataJSON' => ['required', 'string'],
-            'response.authenticatorData' => ['required', 'string'],
-            'response.signature' => ['required', 'string'],
-            'response.userHandle' => ['nullable', 'string'],
-        ]);
+        try {
+            $validated = $request->validate([
+                'id' => ['required', 'string'],
+                'rawId' => ['required', 'string'],
+                'type' => ['required', 'string', 'in:public-key'],
+                'challenge' => ['required', 'string'],
+                'signCount' => ['nullable', 'integer', 'min:0'],
+                'response' => ['required', 'array'],
+                'response.clientDataJSON' => ['required', 'string'],
+                'response.authenticatorData' => ['required', 'string'],
+                'response.signature' => ['required', 'string'],
+                'response.userHandle' => ['nullable', 'string'],
+            ]);
+        } catch (ValidationException $exception) {
+            $this->logDebug('Ledger passkey authentication request validation failed.', [
+                'errors' => $exception->errors(),
+            ]);
+
+            throw $exception;
+        }
 
         $sessionChallenge = $request->session()->pull('webauthn.authentication.challenge');
 
         if (! is_string($sessionChallenge)) {
+            $this->logDebug('Ledger passkey authentication failed: missing session challenge.');
+
             throw ValidationException::withMessages([
                 'challenge' => '認証用チャレンジが期限切れです。再試行してください。',
             ]);
         }
 
         if (! hash_equals($sessionChallenge, $validated['challenge'])) {
+            $this->logDebug('Ledger passkey authentication failed: challenge mismatch.', [
+                'session_challenge' => $sessionChallenge,
+                'provided_challenge' => $validated['challenge'],
+            ]);
+
             throw ValidationException::withMessages([
                 'challenge' => 'チャレンジが一致しません。',
             ]);
@@ -230,6 +246,10 @@ class LedgerAuthController extends Controller
             ->first();
 
         if ($credential === null) {
+            $this->logDebug('Ledger passkey authentication failed: credential not found.', [
+                'credential_id' => $validated['rawId'],
+            ]);
+
             throw ValidationException::withMessages([
                 'id' => '登録済みのパスキーが見つかりません。',
             ]);
@@ -243,6 +263,11 @@ class LedgerAuthController extends Controller
         }
 
         if (! hash_equals($credential->user_handle, $userHandle)) {
+            $this->logDebug('Ledger passkey authentication failed: user handle mismatch.', [
+                'expected_user_handle' => $credential->user_handle,
+                'provided_user_handle' => $userHandle,
+            ]);
+
             throw ValidationException::withMessages([
                 'response.userHandle' => 'ユーザーハンドルが一致しません。',
             ]);
@@ -263,6 +288,11 @@ class LedgerAuthController extends Controller
                 ]
             );
         } catch (AssertionValidationException $exception) {
+            $this->logDebug('Ledger passkey assertion validation failed.', [
+                'credential_id' => $credential->credential_id,
+                'message' => $exception->getMessage(),
+            ]);
+
             return response()->json([
                 'message' => $exception->getMessage(),
             ], 422);
@@ -271,6 +301,11 @@ class LedgerAuthController extends Controller
         $newSignCount = $validated['signCount'] ?? null;
 
         if ($newSignCount !== null && $newSignCount < $credential->sign_count) {
+            $this->logDebug('Ledger passkey authentication failed: sign count decreased.', [
+                'stored_sign_count' => $credential->sign_count,
+                'provided_sign_count' => $newSignCount,
+            ]);
+
             throw ValidationException::withMessages([
                 'signCount' => 'サインカウントが逆行しています。',
             ]);
@@ -279,6 +314,11 @@ class LedgerAuthController extends Controller
         $credential->sign_count = $newSignCount ?? ($credential->sign_count + 1);
         $credential->last_used_at = CarbonImmutable::now();
         $credential->save();
+
+        $this->logDebug('Ledger passkey authentication succeeded.', [
+            'credential_id' => $credential->credential_id,
+            'updated_sign_count' => $credential->sign_count,
+        ]);
 
         $request->session()->regenerate();
         $request->session()->put('ledger_authenticated', true);
@@ -362,5 +402,14 @@ class LedgerAuthController extends Controller
         }
 
         return rtrim($schemeAndHost, '/');
+    }
+
+    private function logDebug(string $message, array $context = []): void
+    {
+        if (! config('app.debug')) {
+            return;
+        }
+
+        Log::debug($message, $context);
     }
 }
