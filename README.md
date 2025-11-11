@@ -72,7 +72,7 @@ WordPress などと同じドキュメントルートを共有しながら `/api/
 Notion オートメーションなどから下記のリクエストを送信します。
 
 ```
-POST /api/notion/monthly-sum
+POST /api/notion_webhook/monthly-sum
 ヘッダー: X-Webhook-Token: <WEBHOOK_TOKEN>
 ボディ: {"year_month":"YYYY-MM"} ※省略時は現在の年月を使用（APP_TIMEZONE のタイムゾーンで判定）
 ```
