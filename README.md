@@ -52,7 +52,7 @@ SLACK_UNFURL_MEDIA=false
 WordPress などと同じドキュメントルートを共有しながら `/api/notion_webform` や `/api/notion_webhook` のようなサブディレクトリ配下に配置する場合は、以下の 2 点を追加で設定します。
 
 1. `.env` に `APP_URL_PREFIX=api/notion_webform` を設定します。末尾のスラッシュは不要です。
-2. `public_html/.htaccess` に次のリライトルールを記述し、`/api/notion_webform` と `/api/notion_webhook` へのアクセスをそれぞれの `public/index.php` に振り向けます。
+2. `public_html/.htaccess` に次のリライトルールを記述し、`/api/notion_webform` と `/api/notion_webhook` へのアクセスをそれぞれの `public/index.php` に振り向けます。アプリを配置した実ディレクトリ名（以下の例では `api/notion`）に合わせて書き換えてください。
 
    ```apacheconf
    # 既存のファイルやディレクトリはそのまま扱う
@@ -61,13 +61,13 @@ WordPress などと同じドキュメントルートを共有しながら `/api/
    RewriteRule ^ - [L]
 
    # 直下とそれ以外でルールを分け、末尾スラッシュによる 403 を回避
-   RewriteRule ^api/notion_webform$ /api/notion_webform/public/index.php [L,QSA]
-   RewriteRule ^api/notion_webform/(.+)$ /api/notion_webform/public/index.php/$1 [L,QSA]
-   RewriteRule ^api/notion_webhook$ /api/notion_webhook/public/index.php [L,QSA]
-   RewriteRule ^api/notion_webhook/(.+)$ /api/notion_webhook/public/index.php/$1 [L,QSA]
+   RewriteRule ^api/notion_webform$ /api/notion/public/index.php [L,QSA]
+   RewriteRule ^api/notion_webform/(.+)$ /api/notion/public/index.php/$1 [L,QSA]
+   RewriteRule ^api/notion_webhook$ /api/notion/public/index.php [L,QSA]
+   RewriteRule ^api/notion_webhook/(.+)$ /api/notion/public/index.php/$1 [L,QSA]
    ```
 
-   各ルールで `/api/notion_webform` および `/api/notion_webhook` へのアクセスを確実に `index.php` に渡し、その配下のリクエストをパス情報付きで中継します。
+   各ルールで `/api/notion_webform` および `/api/notion_webhook` へのアクセスを確実に `index.php` に渡し、その配下のリクエストをパス情報付きで中継します。アプリを `public_html/api/notion` に配置している場合は上記のように `RewriteRule` の書き換え先を `api/notion` に変更し、URL だけを `notion_webform` や `notion_webhook` として公開できます。
 
 ## 利用方法
 
