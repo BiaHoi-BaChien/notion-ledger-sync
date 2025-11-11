@@ -201,6 +201,14 @@
                 const publicKey = transformCreationOptions(options);
                 const credential = await navigator.credentials.create({ publicKey });
 
+                const exportedPublicKey = typeof credential.response.getPublicKey === 'function'
+                    ? credential.response.getPublicKey()
+                    : null;
+
+                if (!exportedPublicKey) {
+                    throw new Error('取得したパスキーの公開鍵を処理できません。別のブラウザをお試しください。');
+                }
+
                 const transports = typeof credential.response.getTransports === 'function'
                     ? credential.response.getTransports()
                     : [];
@@ -212,6 +220,7 @@
                     response: {
                         clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
                         attestationObject: bufferToBase64Url(credential.response.attestationObject),
+                        publicKey: bufferToBase64Url(exportedPublicKey),
                     },
                     clientExtensionResults: credential.getClientExtensionResults?.() ?? {},
                     transports,
