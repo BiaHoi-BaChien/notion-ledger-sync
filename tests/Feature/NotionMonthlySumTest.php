@@ -106,7 +106,7 @@ class NotionMonthlySumTest extends TestCase
         ]);
 
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
-            ->postJson('/api/notion/monthly-sum', ['year_month' => '2025-11']);
+            ->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2025-11']);
 
         $response->assertNoContent();
 
@@ -253,7 +253,7 @@ class NotionMonthlySumTest extends TestCase
         ]);
 
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
-            ->postJson('/api/notion/monthly-sum', ['year_month' => '2026-01']);
+            ->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2026-01']);
 
         $response->assertNoContent();
 
@@ -327,7 +327,7 @@ class NotionMonthlySumTest extends TestCase
         ]);
 
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
-            ->postJson('/api/notion/monthly-sum', ['year_month' => '2024-01']);
+            ->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2024-01']);
 
         $response->assertNoContent();
 
@@ -368,7 +368,7 @@ class NotionMonthlySumTest extends TestCase
         ]);
 
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
-            ->postJson('/api/notion/monthly-sum', ['year_month' => '2025-11']);
+            ->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2025-11']);
 
         $response->assertNoContent();
 
@@ -436,7 +436,7 @@ class NotionMonthlySumTest extends TestCase
         });
 
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
-            ->postJson('/api/notion/monthly-sum', ['year_month' => '2024-05']);
+            ->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2024-05']);
 
         $response->assertNoContent();
 
@@ -471,7 +471,7 @@ class NotionMonthlySumTest extends TestCase
     public function test_validation_error(): void
     {
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
-            ->postJson('/api/notion/monthly-sum', ['year_month' => '2024-13']);
+            ->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2024-13']);
 
         $response->assertStatus(422);
     }
@@ -503,7 +503,7 @@ class NotionMonthlySumTest extends TestCase
 
         try {
             $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
-                ->postJson('/api/notion/monthly-sum');
+                ->postJson('/api/notion_webhook/monthly-sum');
 
             $response->assertNoContent();
 
@@ -525,7 +525,7 @@ class NotionMonthlySumTest extends TestCase
 
     public function test_requires_token(): void
     {
-        $response = $this->postJson('/api/notion/monthly-sum', ['year_month' => '2024-10']);
+        $response = $this->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2024-10']);
 
         $response->assertStatus(401);
     }
@@ -557,7 +557,7 @@ class NotionMonthlySumTest extends TestCase
         ]);
 
         $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
-            ->postJson('/api/notion/monthly-sum', ['year_month' => '2024-08']);
+            ->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2024-08']);
 
         $response->assertNoContent();
 
