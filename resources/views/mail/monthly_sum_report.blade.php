@@ -1,5 +1,10 @@
 Notion月次集計 {{ $result['year_month'] }} 完了
-実行時刻: {{ $runAt->copy()->setTimezone(config('app.timezone', 'UTC'))->format('Y-m-d H:i:s T') }}
+@php
+    $formattedRunAt = \Illuminate\Support\Carbon::parse($runAt)
+        ->setTimezone(config('app.timezone', 'UTC'))
+        ->format('Y-m-d H:i:s T');
+@endphp
+実行時刻: {{ $formattedRunAt }}
 期間: {{ $result['range']['start'] }} - {{ $result['range']['end'] }}
 処理時間: {{ number_format($durationMs, 2) }} ms
 @foreach($result['totals'] as $account => $amount)
