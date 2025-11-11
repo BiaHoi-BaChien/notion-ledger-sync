@@ -21,6 +21,10 @@ class LedgerPasskeyAuthenticationTest extends TestCase
         $rawId = $this->base64url('credential-id');
         $userHandle = config('services.ledger_passkey.user_handle');
 
+        $keyPair = sodium_crypto_sign_keypair();
+        $publicKey = sodium_crypto_sign_publickey($keyPair);
+        $secretKey = sodium_crypto_sign_secretkey($keyPair);
+
         $this->postJson(route('ledger.passkey.register.store'), [
             'id' => $rawId,
             'rawId' => $rawId,
@@ -28,7 +32,7 @@ class LedgerPasskeyAuthenticationTest extends TestCase
             'challenge' => $registerOptions['challenge'],
             'response' => [
                 'clientDataJSON' => $this->base64url('client-data'),
-                'attestationObject' => $this->base64url('attestation'),
+                'attestationObject' => base64_encode($publicKey),
             ],
             'transports' => ['internal'],
         ])->assertCreated();
@@ -45,16 +49,37 @@ class LedgerPasskeyAuthenticationTest extends TestCase
 
         $this->assertNotEmpty($authenticateOptions['allowCredentials']);
 
+        $signCount = 10;
+        $origin = rtrim((string) config('app.url', 'http://localhost'), '/');
+        $rpId = $authenticateOptions['rpId'];
+
+        $clientData = [
+            'type' => 'webauthn.get',
+            'challenge' => $authenticateOptions['challenge'],
+            'origin' => $origin,
+            'crossOrigin' => false,
+        ];
+
+        $clientDataJson = json_encode($clientData, JSON_UNESCAPED_SLASHES);
+        $clientDataEncoded = $this->base64url($clientDataJson);
+
+        $authenticatorData = hash('sha256', $rpId, true) . chr(0x01) . pack('N', $signCount);
+        $authenticatorDataEncoded = $this->base64url($authenticatorData);
+
+        $clientDataHash = hash('sha256', $clientDataJson, true);
+        $signature = sodium_crypto_sign_detached($authenticatorData . $clientDataHash, $secretKey);
+        $signatureEncoded = $this->base64url($signature);
+
         $this->postJson(route('ledger.passkey.login.verify'), [
             'id' => $rawId,
             'rawId' => $rawId,
             'type' => 'public-key',
             'challenge' => $authenticateOptions['challenge'],
-            'signCount' => 10,
+            'signCount' => $signCount,
             'response' => [
-                'clientDataJSON' => $this->base64url('auth-client-data'),
-                'authenticatorData' => $this->base64url(str_repeat('A', 40)),
-                'signature' => $this->base64url('signature'),
+                'clientDataJSON' => $clientDataEncoded,
+                'authenticatorData' => $authenticatorDataEncoded,
+                'signature' => $signatureEncoded,
                 'userHandle' => $this->base64url($userHandle),
             ],
         ])->assertOk()->assertJsonStructure(['redirect']);
@@ -63,7 +88,7 @@ class LedgerPasskeyAuthenticationTest extends TestCase
 
         $this->assertDatabaseHas('ledger_credentials', [
             'credential_id' => $rawId,
-            'sign_count' => 10,
+            'sign_count' => $signCount,
         ]);
     }
 
