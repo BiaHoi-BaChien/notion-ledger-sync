@@ -33,6 +33,7 @@ class LedgerPasskeyAuthenticationTest extends TestCase
             'response' => [
                 'clientDataJSON' => $this->base64url('client-data'),
                 'attestationObject' => base64_encode($publicKey),
+                'publicKey' => base64_encode($publicKey),
             ],
             'transports' => ['internal'],
         ])->assertCreated();
@@ -109,6 +110,7 @@ class LedgerPasskeyAuthenticationTest extends TestCase
             'response' => [
                 'clientDataJSON' => $this->base64url('client-data'),
                 'attestationObject' => $this->base64url('attestation'),
+                'publicKey' => $this->base64url('attestation'),
             ],
         ])->assertCreated();
 

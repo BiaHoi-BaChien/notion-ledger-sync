@@ -124,6 +124,7 @@ class LedgerAuthController extends Controller
             'response' => ['required', 'array'],
             'response.clientDataJSON' => ['required', 'string'],
             'response.attestationObject' => ['required', 'string'],
+            'response.publicKey' => ['required', 'string'],
             'transports' => ['nullable', 'array'],
             'transports.*' => ['string'],
         ]);
@@ -154,7 +155,7 @@ class LedgerAuthController extends Controller
             'type' => $validated['type'],
             'transports' => $validated['transports'] ?? null,
             'attestation_type' => 'none',
-            'public_key' => $validated['response']['attestationObject'],
+            'public_key' => $validated['response']['publicKey'],
             'sign_count' => 0,
         ]);
 
