@@ -24,6 +24,8 @@ APP_TIMEZONE=UTC
 # Notion 接続
 NOTION_API_TOKEN=
 NOTION_DATA_SOURCE_ID=
+# ※省略可。`NOTION_DATABASE_ID` を設定した場合はそちらから自動解決されます。
+# 両方設定されている場合は `NOTION_DATA_SOURCE_ID` が優先されます。
 NOTION_VERSION=2025-09-03
 
 # Webhook 認証
