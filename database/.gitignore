@@ -1,5 +1,5 @@
 *
-!database.sqlite
+database.sqlite
 !factories/
 !factories/**
 !migrations/
