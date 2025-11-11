@@ -178,7 +178,7 @@
         }
         .status.success {
             background: #14b8a6;
-            color: #0f172a;
+            color: #fff;
         }
         .status.error {
             background: #ef4444;
