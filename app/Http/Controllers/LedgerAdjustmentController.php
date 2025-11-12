@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\Adjustment\AdjustmentService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use RuntimeException;
 use Throwable;
 
 class LedgerAdjustmentController extends Controller
@@ -22,6 +23,8 @@ class LedgerAdjustmentController extends Controller
             ],
             'result' => null,
             'status' => null,
+            'passkey' => $this->getPasskeyConfig(),
+            'passkeyRoutes' => $this->getPasskeyRoutes(),
         ]);
     }
 
@@ -35,6 +38,8 @@ class LedgerAdjustmentController extends Controller
             'inputs' => $inputs,
             'result' => $result,
             'status' => null,
+            'passkey' => $this->getPasskeyConfig(),
+            'passkeyRoutes' => $this->getPasskeyRoutes(),
         ]);
     }
 
@@ -64,6 +69,8 @@ class LedgerAdjustmentController extends Controller
             'inputs' => $inputs,
             'result' => $result,
             'status' => $status,
+            'passkey' => $this->getPasskeyConfig(),
+            'passkeyRoutes' => $this->getPasskeyRoutes(),
         ]);
     }
 
@@ -80,6 +87,31 @@ class LedgerAdjustmentController extends Controller
         return [
             'bank_balance' => (float) $validated['bank_balance'],
             'cash_on_hand' => (float) $validated['cash_on_hand'],
+        ];
+    }
+
+    /**
+     * @return array{rp_id:string,rp_name:string,user_name:string,user_display_name:string,user_handle:string}
+     */
+    private function getPasskeyConfig(): array
+    {
+        $config = config('services.ledger_passkey');
+
+        if (! is_array($config)) {
+            throw new RuntimeException('ledger_passkey configuration is missing.');
+        }
+
+        return $config;
+    }
+
+    /**
+     * @return array{register_options:string,register:string}
+     */
+    private function getPasskeyRoutes(): array
+    {
+        return [
+            'register_options' => route('ledger.passkey.register.options'),
+            'register' => route('ledger.passkey.register.store'),
         ];
     }
 }
