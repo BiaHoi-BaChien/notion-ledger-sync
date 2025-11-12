@@ -173,6 +173,11 @@
                 font-size: 1rem;
             }
         }
+        @media (max-width: 480px) and (orientation: portrait) {
+            .primary-btn {
+                padding: 0.45rem 1.1rem;
+            }
+        }
         .status {
             margin-top: 1.5rem;
             border-radius: 1rem;
@@ -271,6 +276,10 @@
             .primary-btn,
             .secondary-btn {
                 width: 100%;
+            }
+            .actions .primary-btn,
+            .actions .secondary-btn {
+                flex: 0 0 auto;
             }
             .header-actions {
                 width: 100%;
@@ -546,7 +555,14 @@
         }
 
         const data = await response.json().catch(() => null);
-        const error = new Error('Request failed');
+        const firstValidationMessage = data?.errors
+            ? Object.values(data.errors).flat().find((message) => typeof message === 'string')
+            : null;
+        const errorMessage = firstValidationMessage
+            ?? (typeof data?.message === 'string' ? data.message : null)
+            ?? 'パスキーの登録に失敗しました。時間をおいて再度お試しください。';
+
+        const error = new Error(errorMessage);
         error.status = response.status;
         error.data = data;
         throw error;
