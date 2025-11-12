@@ -27,10 +27,7 @@ class LedgerAuthController extends Controller
             return redirect()->intended(route('adjustment.form'));
         }
 
-        $suggestedMethod = '端末の生体認証やパスキー（FIDO2）によるパスワードレス認証を導入すると、スマホ入力でもストレスなく安全に利用できます。';
-
         return view('auth.ledger-login', [
-            'suggestedMethod' => $suggestedMethod,
             'passkey' => $this->getPasskeyConfig(),
             'routes' => [
                 'register_options' => route('ledger.passkey.register.options'),
@@ -42,7 +39,6 @@ class LedgerAuthController extends Controller
             'credentials' => [
                 'enabled' => $this->isCredentialLoginEnabled(),
             ],
-            'ledgerAuthenticated' => $request->session()->get('ledger_authenticated', false),
         ]);
     }
 
