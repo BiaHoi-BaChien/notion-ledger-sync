@@ -28,6 +28,12 @@
             display: flex;
             flex-direction: column;
         }
+        body.is-processing {
+            cursor: progress;
+        }
+        body.is-processing > *:not(.processing-overlay) {
+            pointer-events: none;
+        }
         header {
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: #fff;
@@ -181,6 +187,18 @@
             justify-content: center;
             pointer-events: none;
             z-index: 1000;
+        }
+        .processing-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.7);
+            font-weight: 600;
+            font-size: 1.25rem;
+            color: var(--text);
+            z-index: 1500;
         }
         .status-overlay .status {
             margin-top: 0;
@@ -385,6 +403,11 @@
 <script>
     const routes = @json($passkeyRoutes);
 
+    const calculateForm = document.querySelector('.calculate-form');
+    calculateForm?.addEventListener('submit', () => {
+        setProcessingState(true);
+    });
+
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     const registerButton = document.getElementById('passkey-register-button');
     const statusElement = document.getElementById('passkey-status');
@@ -437,6 +460,38 @@
             setStatus('パスキーを登録しました。次回からは「パスキーでログイン」を選択してください。', 'success');
         });
     });
+
+    function setProcessingState(isProcessing) {
+        const interactiveElements = document.querySelectorAll('button, input, select, textarea');
+
+        interactiveElements.forEach((element) => {
+            if (isProcessing) {
+                if (!element.dataset.initiallyDisabled) {
+                    element.dataset.initiallyDisabled = element.disabled ? 'true' : 'false';
+                }
+
+                element.disabled = true;
+            } else if (element.dataset.initiallyDisabled === 'false') {
+                element.disabled = false;
+                delete element.dataset.initiallyDisabled;
+            } else if (element.dataset.initiallyDisabled === 'true') {
+                delete element.dataset.initiallyDisabled;
+            }
+        });
+
+        document.body.classList.toggle('is-processing', isProcessing);
+
+        if (isProcessing) {
+            if (!document.querySelector('.processing-overlay')) {
+                const overlay = document.createElement('div');
+                overlay.className = 'processing-overlay';
+                overlay.textContent = '計算中…';
+                document.body.appendChild(overlay);
+            }
+        } else {
+            document.querySelector('.processing-overlay')?.remove();
+        }
+    }
 
     async function withProcessing(button, callback) {
         try {
