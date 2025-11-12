@@ -277,6 +277,10 @@
             .secondary-btn {
                 width: 100%;
             }
+            .actions .primary-btn,
+            .actions .secondary-btn {
+                flex: 0 0 auto;
+            }
             .header-actions {
                 width: 100%;
                 flex-direction: column;
