@@ -160,6 +160,13 @@
         .secondary-btn:hover {
             box-shadow: 0 12px 24px rgba(14, 165, 233, 0.2);
         }
+        @media (max-width: 480px) {
+            .primary-btn,
+            .secondary-btn {
+                padding: 0.7rem 1.1rem;
+                font-size: 1rem;
+            }
+        }
         .status {
             margin-top: 1.5rem;
             border-radius: 1rem;
