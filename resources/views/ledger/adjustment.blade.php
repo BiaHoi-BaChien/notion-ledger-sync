@@ -405,7 +405,11 @@
 
     const calculateForm = document.querySelector('.calculate-form');
     calculateForm?.addEventListener('submit', () => {
-        setProcessingState(true);
+        const elementsToPreserve = Array.from(
+            calculateForm.querySelectorAll('button, input, select, textarea')
+        );
+
+        setProcessingState(true, { exclude: elementsToPreserve });
     });
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -461,10 +465,16 @@
         });
     });
 
-    function setProcessingState(isProcessing) {
+    function setProcessingState(isProcessing, options = {}) {
+        const exclude = Array.isArray(options.exclude) ? options.exclude : [];
+        const excludeSet = new Set(exclude);
         const interactiveElements = document.querySelectorAll('button, input, select, textarea');
 
         interactiveElements.forEach((element) => {
+            if (excludeSet.has(element)) {
+                return;
+            }
+
             if (isProcessing) {
                 if (!element.dataset.initiallyDisabled) {
                     element.dataset.initiallyDisabled = element.disabled ? 'true' : 'false';
