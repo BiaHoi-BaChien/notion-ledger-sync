@@ -173,6 +173,11 @@
                 font-size: 1rem;
             }
         }
+        @media (max-width: 480px) and (orientation: portrait) {
+            .primary-btn {
+                padding: 0.45rem 1.1rem;
+            }
+        }
         .status {
             margin-top: 1.5rem;
             border-radius: 1rem;
