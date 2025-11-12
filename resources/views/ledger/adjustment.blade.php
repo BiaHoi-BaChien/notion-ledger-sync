@@ -410,7 +410,7 @@
 
     const calculateForm = document.querySelector('.calculate-form');
     calculateForm?.addEventListener('submit', () => {
-        setProcessingState(true);
+        setProcessingState(true, calculateForm);
     });
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -466,12 +466,21 @@
         });
     });
 
-    function setProcessingState(isProcessing) {
+    function setProcessingState(isProcessing, preservedForm = null) {
         const interactiveElements = document.querySelectorAll('button, input, select, textarea');
 
         interactiveElements.forEach((element) => {
             if (element instanceof HTMLInputElement && element.type === 'hidden') {
                 return;
+            }
+
+            if (preservedForm && preservedForm.contains(element)) {
+                const isSubmitControl = element instanceof HTMLButtonElement
+                    || (element instanceof HTMLInputElement && element.type === 'submit');
+
+                if (!isSubmitControl) {
+                    return;
+                }
             }
 
             if (isProcessing) {
