@@ -465,6 +465,10 @@
         const interactiveElements = document.querySelectorAll('button, input, select, textarea');
 
         interactiveElements.forEach((element) => {
+            if (element instanceof HTMLInputElement && element.type === 'hidden') {
+                return;
+            }
+
             if (isProcessing) {
                 if (!element.dataset.initiallyDisabled) {
                     element.dataset.initiallyDisabled = element.disabled ? 'true' : 'false';
