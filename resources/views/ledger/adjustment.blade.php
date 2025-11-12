@@ -536,7 +536,14 @@
         }
 
         const data = await response.json().catch(() => null);
-        const error = new Error('Request failed');
+        const firstValidationMessage = data?.errors
+            ? Object.values(data.errors).flat().find((message) => typeof message === 'string')
+            : null;
+        const errorMessage = firstValidationMessage
+            ?? (typeof data?.message === 'string' ? data.message : null)
+            ?? 'パスキーの登録に失敗しました。時間をおいて再度お試しください。';
+
+        const error = new Error(errorMessage);
         error.status = response.status;
         error.data = data;
         throw error;
