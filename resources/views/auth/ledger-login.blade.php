@@ -137,15 +137,10 @@
 <body>
     <div class="card">
         <h1>調整額フォーム ログイン</h1>
-        <p class="suggestion">{{ $suggestedMethod }}</p>
         <div class="actions">
-            <button type="button" id="register-button">パスキーを登録</button>
             <button type="button" id="login-button">パスキーでログイン</button>
         </div>
-        @if (! $ledgerAuthenticated)
-            <p class="note note-warning" role="alert">パスキーを登録するには、先にユーザー名とパスワードでログインしてください。</p>
-        @endif
-        <p class="note">初回は「パスキーを登録」で端末のパスキーを保存し、次回以降は「パスキーでログイン」で生体認証またはデバイス認証を行ってください。</p>
+        <p class="note">パスキーを登録するには、先にユーザー名とパスワードでログインしてください。</p>
         <div id="status" role="status" aria-live="polite"></div>
 
         @if ($credentials['enabled'])
@@ -190,73 +185,16 @@
     <script>
         const routes = @json($routes);
         const passkeyConfig = @json($passkey);
-        const ledgerAuthenticated = @json($ledgerAuthenticated);
-
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         const statusElement = document.getElementById('status');
-        const registerButton = document.getElementById('register-button');
         const loginButton = document.getElementById('login-button');
         const textEncoder = new TextEncoder();
         const defaultUserHandle = stringToBase64Url(passkeyConfig.user_handle);
 
         if (!window.PublicKeyCredential) {
             setStatus('このブラウザはパスキー認証に対応していません。最新のブラウザをご利用ください。', true);
-            registerButton.disabled = true;
             loginButton.disabled = true;
         }
-
-        if (!ledgerAuthenticated && registerButton) {
-            registerButton.setAttribute('aria-disabled', 'true');
-        }
-
-        registerButton?.addEventListener('click', async () => {
-            if (!ledgerAuthenticated) {
-                setStatus('パスキーを登録するには、先にユーザー名とパスワードでログインしてください。', true);
-                return;
-            }
-
-            await withProcessing(registerButton, async () => {
-                setStatus('パスキー登録オプションを取得しています…');
-                const options = await postJson(routes.register_options, {});
-
-                const publicKey = transformCreationOptions(options);
-                const credential = await navigator.credentials.create({ publicKey });
-
-                const exportedPublicKey = typeof credential.response.getPublicKey === 'function'
-                    ? credential.response.getPublicKey()
-                    : null;
-
-                if (!exportedPublicKey) {
-                    throw new Error('取得したパスキーの公開鍵を処理できません。別のブラウザをお試しください。');
-                }
-
-                const publicKeyAlgorithm = typeof credential.response.getPublicKeyAlgorithm === 'function'
-                    ? credential.response.getPublicKeyAlgorithm()
-                    : -8;
-
-                const transports = typeof credential.response.getTransports === 'function'
-                    ? credential.response.getTransports()
-                    : [];
-
-                const payload = {
-                    id: credential.id,
-                    rawId: bufferToBase64Url(credential.rawId),
-                    type: credential.type,
-                    response: {
-                        clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
-                        attestationObject: bufferToBase64Url(credential.response.attestationObject),
-                        publicKey: bufferToBase64Url(exportedPublicKey),
-                        publicKeyAlgorithm,
-                    },
-                    clientExtensionResults: credential.getClientExtensionResults?.() ?? {},
-                    transports,
-                    challenge: options.challenge,
-                };
-
-                await postJson(routes.register, payload);
-                setStatus('パスキーを登録しました。次回からは「パスキーでログイン」を選択してください。');
-            });
-        });
 
         loginButton?.addEventListener('click', async () => {
             await withProcessing(loginButton, async () => {
