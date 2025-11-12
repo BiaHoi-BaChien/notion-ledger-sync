@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <x-app-favicon />
     <title>調整額計算ツール</title>
     <style>
@@ -35,6 +36,11 @@
             align-items: center;
             justify-content: space-between;
             gap: 1rem;
+        }
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
         header h1 {
             margin: 0;
@@ -241,18 +247,31 @@
             .secondary-btn {
                 width: 100%;
             }
+            .header-actions {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .header-actions form,
+            .header-actions button {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
     <header>
         <h1>調整額計算ツール</h1>
-        <form method="post" action="{{ route('ledger.logout') }}">
-            @csrf
-            <button type="submit">ログアウト</button>
-        </form>
+        <div class="header-actions">
+            <button type="button" id="passkey-register-button">パスキー登録</button>
+            <form method="post" action="{{ route('ledger.logout') }}">
+                @csrf
+                <button type="submit">ログアウト</button>
+            </form>
+        </div>
     </header>
     <main>
+        <div id="passkey-status" class="status" role="status" aria-live="polite" hidden></div>
         <section class="card">
             <h2>現在の銀行残高と手持ちの現金の金額を入力してください</h2>
             <form method="post" action="{{ route('adjustment.calculate') }}" class="calculate-form">
@@ -356,4 +375,186 @@
         </script>
     @endif
 </body>
+<script>
+    const routes = @json($passkeyRoutes);
+
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const registerButton = document.getElementById('passkey-register-button');
+    const statusElement = document.getElementById('passkey-status');
+
+    if (!window.PublicKeyCredential && registerButton) {
+        registerButton.disabled = true;
+        setStatus('このブラウザはパスキー認証に対応していません。最新のブラウザをご利用ください。', 'error');
+    }
+
+    registerButton?.addEventListener('click', async () => {
+        await withProcessing(registerButton, async () => {
+            setStatus('パスキー登録オプションを取得しています…');
+            const options = await postJson(routes.register_options, {});
+
+            const publicKey = transformCreationOptions(options);
+            const credential = await navigator.credentials.create({ publicKey });
+
+            const exportedPublicKey = typeof credential.response.getPublicKey === 'function'
+                ? credential.response.getPublicKey()
+                : null;
+
+            if (!exportedPublicKey) {
+                throw new Error('取得したパスキーの公開鍵を処理できません。別のブラウザをお試しください。');
+            }
+
+            const publicKeyAlgorithm = typeof credential.response.getPublicKeyAlgorithm === 'function'
+                ? credential.response.getPublicKeyAlgorithm()
+                : -8;
+
+            const transports = typeof credential.response.getTransports === 'function'
+                ? credential.response.getTransports()
+                : [];
+
+            const payload = {
+                id: credential.id,
+                rawId: bufferToBase64Url(credential.rawId),
+                type: credential.type,
+                response: {
+                    clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
+                    attestationObject: bufferToBase64Url(credential.response.attestationObject),
+                    publicKey: bufferToBase64Url(exportedPublicKey),
+                    publicKeyAlgorithm,
+                },
+                clientExtensionResults: credential.getClientExtensionResults?.() ?? {},
+                transports,
+                challenge: options.challenge,
+            };
+
+            await postJson(routes.register, payload);
+            setStatus('パスキーを登録しました。次回からは「パスキーでログイン」を選択してください。', 'success');
+        });
+    });
+
+    async function withProcessing(button, callback) {
+        try {
+            button.disabled = true;
+            await callback();
+        } catch (error) {
+            handleError(error);
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    function setStatus(message, type = 'info') {
+        if (!statusElement) {
+            return;
+        }
+
+        statusElement.hidden = false;
+        statusElement.textContent = message;
+        statusElement.classList.remove('error', 'success');
+
+        if (type === 'error') {
+            statusElement.classList.add('error');
+        } else if (type === 'success') {
+            statusElement.classList.add('success');
+        }
+    }
+
+    async function postJson(url, body) {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            body: JSON.stringify(body),
+        });
+
+        if (response.ok) {
+            return response.json();
+        }
+
+        const data = await response.json().catch(() => null);
+        const error = new Error('Request failed');
+        error.status = response.status;
+        error.data = data;
+        throw error;
+    }
+
+    function transformCreationOptions(options) {
+        return {
+            ...options,
+            challenge: base64UrlToBuffer(options.challenge),
+            user: {
+                ...options.user,
+                id: base64UrlToBuffer(options.user.id),
+            },
+            excludeCredentials: (options.excludeCredentials ?? []).map((credential) => ({
+                ...credential,
+                id: base64UrlToBuffer(credential.id),
+            })),
+        };
+    }
+
+    function handleError(error) {
+        if (error?.name === 'InvalidStateError'
+            || typeof error?.message === 'string' && error.message.includes('credential manager')
+        ) {
+            setStatus('この端末には既にパスキーが登録されています。「パスキーでログイン」をお試しください。');
+            return;
+        }
+
+        if (error?.name === 'NotAllowedError') {
+            setStatus('認証がキャンセルされました。もう一度お試しください。', 'error');
+            return;
+        }
+
+        if (error?.data?.errors) {
+            const firstMessage = Object.values(error.data.errors)[0]?.[0];
+            if (firstMessage) {
+                setStatus(firstMessage, 'error');
+                return;
+            }
+        }
+
+        if (error?.message) {
+            setStatus(error.message, 'error');
+            return;
+        }
+
+        setStatus('不明なエラーが発生しました。', 'error');
+    }
+
+    function bufferToBase64Url(buffer) {
+        let bytes;
+
+        if (buffer instanceof ArrayBuffer) {
+            bytes = new Uint8Array(buffer);
+        } else if (ArrayBuffer.isView(buffer)) {
+            bytes = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+        } else {
+            throw new TypeError('Unsupported buffer type');
+        }
+
+        let binary = '';
+
+        for (let i = 0; i < bytes.byteLength; i += 1) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    }
+
+    function base64UrlToBuffer(base64url) {
+        const padding = '='.repeat((4 - (base64url.length % 4)) % 4);
+        const base64 = (base64url + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+
+        for (let i = 0; i < binary.length; i += 1) {
+            bytes[i] = binary.charCodeAt(i);
+        }
+
+        return bytes.buffer;
+    }
+</script>
 </html>
