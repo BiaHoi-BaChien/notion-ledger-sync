@@ -88,13 +88,13 @@ namespace {
             }
 
             if (strlen($publicKey) !== SODIUM_CRYPTO_SIGN_PUBLICKEYBYTES) {
-                return true;
+                return false;
             }
 
             $secretKey = SodiumPolyfillRegistry::resolve($publicKey);
 
             if ($secretKey === null) {
-                return true;
+                return false;
             }
 
             $expected = hash_hmac('sha512', $message, $secretKey, true);
