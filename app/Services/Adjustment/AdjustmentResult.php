@@ -15,7 +15,8 @@ class AdjustmentResult
         public float $notionTotal,
         public float $adjustmentAmount,
         public string $accountName,
-        public bool $hasCarryOverRecord
+        /** @var list<string> */
+        public array $missingCarryOverAccounts
     ) {
     }
 
@@ -33,7 +34,7 @@ class AdjustmentResult
             'notion_total' => $this->notionTotal,
             'adjustment_amount' => $this->adjustmentAmount,
             'account_name' => $this->accountName,
-            'has_carry_over_record' => $this->hasCarryOverRecord,
+            'missing_carry_over_accounts' => $this->missingCarryOverAccounts,
         ];
     }
 }

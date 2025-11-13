@@ -329,9 +329,9 @@
                 </div>
             </form>
             @if ($result)
-                @if (! $result->hasCarryOverRecord)
+                @if ($result->missingCarryOverAccounts !== [])
                     <div class="status warning" role="alert" aria-live="assertive">
-                        繰越レコードが見つかりませんでした。調整額が正しく計算できていない可能性があります
+                        繰越レコードが見つかりませんでした（口座: {{ implode('、', $result->missingCarryOverAccounts) }}）。調整額が正しく計算できていない可能性があります
                     </div>
                 @endif
                 @php
