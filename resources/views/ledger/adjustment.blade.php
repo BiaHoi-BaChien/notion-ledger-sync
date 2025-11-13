@@ -151,7 +151,7 @@
         .primary-btn {
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: #fff;
-            flex: 1 1 200px;
+            flex: 1 1 220px;
         }
         .secondary-btn {
             background: linear-gradient(135deg, #0ea5e9, #0284c7);
@@ -171,11 +171,6 @@
             .secondary-btn {
                 padding: 0.7rem 1.1rem;
                 font-size: 1rem;
-            }
-        }
-        @media (max-width: 480px) and (orientation: portrait) {
-            .primary-btn {
-                padding: 0.45rem 1.1rem;
             }
         }
         .status {
