@@ -87,7 +87,7 @@ class AdjustmentServiceTest extends TestCase
         $notion->expects($this->once())
             ->method('createAdjustmentPage')
             ->with(
-                '2024-05-31',
+                '2024-05-31T18:00:00+09:00',
                 $expectedType,
                 '調整',
                 '調整額',

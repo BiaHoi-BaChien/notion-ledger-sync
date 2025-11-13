@@ -54,7 +54,7 @@ class AdjustmentService
     {
         $type = $result->adjustmentAmount >= 0 ? '収入' : '支出';
         $amount = abs($result->adjustmentAmount);
-        $date = $result->calculatedAt->toDateString();
+        $date = $result->calculatedAt->toIso8601String();
 
         $this->notion->createAdjustmentPage(
             $date,
