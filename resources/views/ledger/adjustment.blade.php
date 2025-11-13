@@ -215,6 +215,10 @@
             background: #ef4444;
             color: #fff;
         }
+        .status.warning {
+            background: #fcd34d;
+            color: #78350f;
+        }
         .result-grid {
             display: grid;
             gap: 1rem;
@@ -325,6 +329,11 @@
                 </div>
             </form>
             @if ($result)
+                @if (! $result->hasCarryOverRecord)
+                    <div class="status warning" role="alert" aria-live="assertive">
+                        繰越レコードが見つかりませんでした。調整額が正しく計算できていない可能性があります
+                    </div>
+                @endif
                 @php
                     $formattedBank = number_format($result->bankBalance, 0, '.', ',');
                     $formattedCash = number_format($result->cashOnHand, 0, '.', ',');

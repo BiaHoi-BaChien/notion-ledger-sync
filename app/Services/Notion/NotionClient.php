@@ -69,6 +69,7 @@ class NotionClient
                 $results[] = [
                     'account' => Arr::get($properties, '口座.select.name'),
                     'amount' => $this->resolveAmount($properties),
+                    'type' => Arr::get($properties, '種類.select.name'),
                     'date' => Arr::get($properties, '日付.date.start'),
                 ];
             }

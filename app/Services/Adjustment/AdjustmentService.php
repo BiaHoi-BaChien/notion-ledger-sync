@@ -23,10 +23,16 @@ class AdjustmentService
         $pages = $this->notion->queryByDateRange($targetMonthStart, $targetMonthEnd);
 
         $total = 0.0;
+        $hasCarryOverRecord = false;
 
         foreach ($pages as $page) {
             $account = Arr::get($page, 'account');
             $amount = Arr::get($page, 'amount');
+            $type = Arr::get($page, 'type');
+
+            if ($type === '繰越') {
+                $hasCarryOverRecord = true;
+            }
 
             if ($account !== self::TARGET_ACCOUNT || $amount === null) {
                 continue;
@@ -46,7 +52,8 @@ class AdjustmentService
             (float) $physicalTotal,
             (float) $total,
             (float) $adjustmentAmount,
-            self::TARGET_ACCOUNT
+            self::TARGET_ACCOUNT,
+            $hasCarryOverRecord
         );
     }
 
