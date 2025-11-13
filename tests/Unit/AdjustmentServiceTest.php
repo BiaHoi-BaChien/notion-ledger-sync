@@ -34,10 +34,10 @@ class AdjustmentServiceTest extends TestCase
                 $this->callback(fn ($end) => $end instanceof CarbonImmutable && $end->equalTo($expectedEnd))
             )
             ->willReturn([
-                ['account' => '現金/普通預金', 'amount' => 100.0],
-                ['account' => '現金/普通預金', 'amount' => null],
-                ['account' => 'その他', 'amount' => 500.0],
-                ['account' => '現金/普通預金', 'amount' => -25.5],
+                ['account' => '現金/普通預金', 'amount' => 100.0, 'type' => '繰越'],
+                ['account' => '現金/普通預金', 'amount' => null, 'type' => '支出'],
+                ['account' => 'その他', 'amount' => 500.0, 'type' => '支出'],
+                ['account' => '現金/普通預金', 'amount' => -25.5, 'type' => '収入'],
             ]);
 
         $service = new AdjustmentService($notion);
@@ -53,6 +53,35 @@ class AdjustmentServiceTest extends TestCase
         $this->assertSame(74.5, $result->notionTotal);
         $this->assertSame(1425.5, $result->adjustmentAmount);
         $this->assertSame('現金/普通預金', $result->accountName);
+        $this->assertTrue($result->hasCarryOverRecord);
+    }
+
+    public function test_calculate_marks_carry_over_missing_when_not_found(): void
+    {
+        config(['app.timezone' => 'Asia/Tokyo']);
+        CarbonImmutable::setTestNow(CarbonImmutable::parse('2024-05-15 10:30:00', 'Asia/Tokyo'));
+
+        $notion = $this->createMock(NotionClient::class);
+
+        $expectedStart = CarbonImmutable::parse('2024-05-01 00:00:00', 'Asia/Tokyo');
+        $expectedEnd = $expectedStart->addMonth();
+
+        $notion->expects($this->once())
+            ->method('queryByDateRange')
+            ->with(
+                $this->callback(fn ($start) => $start instanceof CarbonImmutable && $start->equalTo($expectedStart)),
+                $this->callback(fn ($end) => $end instanceof CarbonImmutable && $end->equalTo($expectedEnd))
+            )
+            ->willReturn([
+                ['account' => '現金/普通預金', 'amount' => 100.0, 'type' => '収入'],
+                ['account' => '現金/普通預金', 'amount' => -50.0, 'type' => '支出'],
+            ]);
+
+        $service = new AdjustmentService($notion);
+
+        $result = $service->calculate(1200.0, 300.0);
+
+        $this->assertFalse($result->hasCarryOverRecord);
     }
 
     /**
@@ -81,7 +110,8 @@ class AdjustmentServiceTest extends TestCase
             1500.0,
             74.5,
             $adjustment,
-            '現金/普通預金'
+            '現金/普通預金',
+            true
         );
 
         $notion->expects($this->once())
