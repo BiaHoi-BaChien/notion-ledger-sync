@@ -8,8 +8,6 @@ use Illuminate\Support\Arr;
 
 class AdjustmentService
 {
-    private const TARGET_ACCOUNT = '現金/普通預金';
-
     public function __construct(private NotionClient $notion)
     {
     }
@@ -23,18 +21,25 @@ class AdjustmentService
         $pages = $this->notion->queryByDateRange($targetMonthStart, $targetMonthEnd);
 
         $total = 0.0;
-        $hasCarryOverRecord = false;
+        $targetAccount = '現金/普通預金';
+        $carryOverAccounts = config('services.monthly_sum.accounts', []);
+
+        if ($carryOverAccounts === []) {
+            $carryOverAccounts = [$targetAccount];
+        }
+
+        $missingCarryOverAccounts = array_fill_keys($carryOverAccounts, true);
 
         foreach ($pages as $page) {
             $account = Arr::get($page, 'account');
             $amount = Arr::get($page, 'amount');
             $type = Arr::get($page, 'type');
 
-            if ($type === '繰越') {
-                $hasCarryOverRecord = true;
+            if ($type === '繰越' && is_string($account) && array_key_exists($account, $missingCarryOverAccounts)) {
+                unset($missingCarryOverAccounts[$account]);
             }
 
-            if ($account !== self::TARGET_ACCOUNT || $amount === null) {
+            if ($account !== $targetAccount || $amount === null) {
                 continue;
             }
 
@@ -52,8 +57,8 @@ class AdjustmentService
             (float) $physicalTotal,
             (float) $total,
             (float) $adjustmentAmount,
-            self::TARGET_ACCOUNT,
-            $hasCarryOverRecord
+            $targetAccount,
+            array_keys($missingCarryOverAccounts)
         );
     }
 
