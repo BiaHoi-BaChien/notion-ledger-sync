@@ -13,6 +13,9 @@ class MonthlySumConfigTest extends TestCase
         $this->clearEnv('MONTHLY_SUM_ACCOUNT');
         $this->clearEnv('MONTHLY_SUM_ACCOUNT_CASH');
         $this->clearEnv('MONTHLY_SUM_ACCOUNT_TIME_DEPOSIT');
+        $this->clearEnv('CASH_OR_SAVING');
+        $this->clearEnv('TIME_DEPOSIT');
+        $this->clearEnv('OTHER_ACCOUNT');
     }
 
     protected function tearDown(): void
@@ -20,6 +23,9 @@ class MonthlySumConfigTest extends TestCase
         $this->clearEnv('MONTHLY_SUM_ACCOUNT');
         $this->clearEnv('MONTHLY_SUM_ACCOUNT_CASH');
         $this->clearEnv('MONTHLY_SUM_ACCOUNT_TIME_DEPOSIT');
+        $this->clearEnv('CASH_OR_SAVING');
+        $this->clearEnv('TIME_DEPOSIT');
+        $this->clearEnv('OTHER_ACCOUNT');
 
         parent::tearDown();
     }
@@ -50,6 +56,30 @@ class MonthlySumConfigTest extends TestCase
         $config = $this->loadConfig();
 
         $this->assertSame(['現金/普通預金', '手元現金', '定期預金'], $config['monthly_sum']['accounts']);
+    }
+
+    public function test_combined_account_env_supports_plus_separated_env_variables(): void
+    {
+        $this->setEnv('MONTHLY_SUM_ACCOUNT', 'CASH_OR_SAVING+TIME_DEPOSIT+OTHER_ACCOUNT');
+        $this->setEnv('CASH_OR_SAVING', "現金/普通預金\n手元現金");
+        $this->setEnv('TIME_DEPOSIT', '定期預金');
+        $this->setEnv('OTHER_ACCOUNT', '海外口座');
+
+        $config = $this->loadConfig();
+
+        $this->assertSame(['現金/普通預金', '手元現金', '定期預金', '海外口座'], $config['monthly_sum']['accounts']);
+    }
+
+    public function test_plus_separated_env_variables_ignores_empty_values(): void
+    {
+        $this->setEnv('MONTHLY_SUM_ACCOUNT', 'CASH_OR_SAVING+TIME_DEPOSIT+OTHER_ACCOUNT');
+        $this->setEnv('CASH_OR_SAVING', '現金/普通預金');
+        $this->setEnv('TIME_DEPOSIT', '定期預金');
+        $this->setEnv('OTHER_ACCOUNT', '');
+
+        $config = $this->loadConfig();
+
+        $this->assertSame(['現金/普通預金', '定期預金'], $config['monthly_sum']['accounts']);
     }
 
     private function setEnv(string $name, string $value): void
