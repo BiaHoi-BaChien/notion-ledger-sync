@@ -10,6 +10,15 @@ use Tests\TestCase;
 
 class AdjustmentServiceTest extends TestCase
 {
+    private string $targetAccount;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->targetAccount = config('services.adjustment.target_account', '現金/普通預金');
+    }
+
     protected function tearDown(): void
     {
         CarbonImmutable::setTestNow();
@@ -20,7 +29,7 @@ class AdjustmentServiceTest extends TestCase
     public function test_calculate_filters_non_target_accounts_and_computes_adjustment(): void
     {
         config(['app.timezone' => 'Asia/Tokyo']);
-        config(['services.monthly_sum.accounts' => ['現金/普通預金']]);
+        config(['services.monthly_sum.accounts' => [$this->targetAccount]]);
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2024-05-15 10:30:00', 'Asia/Tokyo'));
 
         $notion = $this->createMock(NotionClient::class);
@@ -35,10 +44,10 @@ class AdjustmentServiceTest extends TestCase
                 $this->callback(fn ($end) => $end instanceof CarbonImmutable && $end->equalTo($expectedEnd))
             )
             ->willReturn([
-                ['account' => '現金/普通預金', 'amount' => 100.0, 'type' => '繰越'],
-                ['account' => '現金/普通預金', 'amount' => null, 'type' => '支出'],
+                ['account' => $this->targetAccount, 'amount' => 100.0, 'type' => '繰越'],
+                ['account' => $this->targetAccount, 'amount' => null, 'type' => '支出'],
                 ['account' => 'その他', 'amount' => 500.0, 'type' => '支出'],
-                ['account' => '現金/普通預金', 'amount' => -25.5, 'type' => '収入'],
+                ['account' => $this->targetAccount, 'amount' => -25.5, 'type' => '収入'],
             ]);
 
         $service = new AdjustmentService($notion);
@@ -53,14 +62,14 @@ class AdjustmentServiceTest extends TestCase
         $this->assertSame(1500.0, $result->physicalTotal);
         $this->assertSame(74.5, $result->notionTotal);
         $this->assertSame(1425.5, $result->adjustmentAmount);
-        $this->assertSame('現金/普通預金', $result->accountName);
+        $this->assertSame($this->targetAccount, $result->accountName);
         $this->assertSame([], $result->missingCarryOverAccounts);
     }
 
     public function test_calculate_marks_carry_over_missing_when_not_found(): void
     {
         config(['app.timezone' => 'Asia/Tokyo']);
-        config(['services.monthly_sum.accounts' => ['現金/普通預金', '定期預金']]);
+        config(['services.monthly_sum.accounts' => [$this->targetAccount, '定期預金']]);
         CarbonImmutable::setTestNow(CarbonImmutable::parse('2024-05-15 10:30:00', 'Asia/Tokyo'));
 
         $notion = $this->createMock(NotionClient::class);
@@ -75,15 +84,15 @@ class AdjustmentServiceTest extends TestCase
                 $this->callback(fn ($end) => $end instanceof CarbonImmutable && $end->equalTo($expectedEnd))
             )
             ->willReturn([
-                ['account' => '現金/普通預金', 'amount' => 100.0, 'type' => '収入'],
-                ['account' => '現金/普通預金', 'amount' => -50.0, 'type' => '支出'],
+                ['account' => $this->targetAccount, 'amount' => 100.0, 'type' => '収入'],
+                ['account' => $this->targetAccount, 'amount' => -50.0, 'type' => '支出'],
             ]);
 
         $service = new AdjustmentService($notion);
 
         $result = $service->calculate(1200.0, 300.0);
 
-        $this->assertSame(['現金/普通預金', '定期預金'], $result->missingCarryOverAccounts);
+        $this->assertSame([$this->targetAccount, '定期預金'], $result->missingCarryOverAccounts);
     }
 
     /**
@@ -112,7 +121,7 @@ class AdjustmentServiceTest extends TestCase
             1500.0,
             74.5,
             $adjustment,
-            '現金/普通預金',
+            $this->targetAccount,
             []
         );
 
@@ -124,7 +133,7 @@ class AdjustmentServiceTest extends TestCase
                 '調整',
                 '調整額',
                 $this->identicalTo(abs($adjustment)),
-                '現金/普通預金'
+                $this->targetAccount
             );
 
         $service = new AdjustmentService($notion);
