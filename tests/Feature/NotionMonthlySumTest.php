@@ -14,12 +14,14 @@ use Tests\TestCase;
 class NotionMonthlySumTest extends TestCase
 {
     private string $originalTimezone;
+    private string $targetAccount;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->originalTimezone = Config::get('app.timezone', 'UTC');
+        $this->targetAccount = Config::get('services.adjustment.target_account', '現金/普通預金');
         Config::set('services.notion.token', 'test-token');
         Config::set('services.notion.data_source_id', 'ds123');
         Config::set('services.notion.database_id', 'carryover-db');
@@ -65,7 +67,7 @@ class NotionMonthlySumTest extends TestCase
                         ],
                         [
                             'properties' => [
-                                '口座' => ['select' => ['name' => '現金/普通預金']],
+                                '口座' => ['select' => ['name' => $this->targetAccount]],
                                 '金額' => ['number' => 800],
                             ],
                         ],
@@ -89,7 +91,7 @@ class NotionMonthlySumTest extends TestCase
                         ],
                         [
                             'properties' => [
-                                '口座' => ['select' => ['name' => '現金/普通預金']],
+                                '口座' => ['select' => ['name' => $this->targetAccount]],
                                 '金額' => ['number' => null],
                             ],
                         ],
@@ -117,7 +119,7 @@ class NotionMonthlySumTest extends TestCase
             $body = $mail->render();
             $this->assertStringContainsString('実行時刻: 2025-11-30 09:00:00 JST', $body);
             $this->assertStringNotContainsString('件数:', $body);
-            $this->assertStringContainsString("現金/普通預金: 800", $body);
+            $this->assertStringContainsString(sprintf('%s: 800', $this->targetAccount), $body);
             $this->assertStringContainsString("定期預金: 1,700", $body);
             $this->assertStringNotContainsString('合計:', $body);
             $this->assertStringContainsString("繰越登録状況:", $body);
@@ -128,14 +130,14 @@ class NotionMonthlySumTest extends TestCase
         $this->assertNotNull($sentMail);
         $this->assertSame('2025-11', $sentMail->result['year_month']);
         $this->assertSame([
-            '現金/普通預金' => 800.0,
+            $this->targetAccount => 800.0,
             '定期預金' => 1700.0,
         ], $sentMail->result['totals']);
         $this->assertSame(3, $sentMail->result['records_count']);
         $this->assertSame(2500.0, $sentMail->result['total_all']);
         $this->assertSame([
             [
-                'account' => '現金/普通預金',
+                'account' => $this->targetAccount,
                 'status' => 'success',
                 'created_at' => '2025-11-30T00:00:00+00:00',
             ],
@@ -162,7 +164,7 @@ class NotionMonthlySumTest extends TestCase
             $text = Arr::get($request->data(), 'text');
 
             $this->assertStringContainsString("件数: 3", $text);
-            $this->assertStringContainsString("現金/普通預金: 800", $text);
+            $this->assertStringContainsString(sprintf('%s: 800', $this->targetAccount), $text);
             $this->assertStringContainsString("定期預金: 1,700", $text);
             $this->assertStringNotContainsString('合計:', $text);
             $this->assertStringContainsString("繰越登録状況:", $text);
@@ -182,7 +184,7 @@ class NotionMonthlySumTest extends TestCase
 
         $this->assertCount(2, $carryOverRequests);
 
-        $expectedAccounts = ['現金/普通預金', '定期預金'];
+        $expectedAccounts = [$this->targetAccount, '定期預金'];
         $carryOverDate = '2025-12-01';
 
         foreach ($carryOverRequests as $request) {
@@ -197,7 +199,7 @@ class NotionMonthlySumTest extends TestCase
             $account = Arr::get($payload, 'properties.口座.select.name');
             $this->assertContains($account, $expectedAccounts);
 
-            if ($account === '現金/普通預金') {
+            if ($account === $this->targetAccount) {
                 $this->assertSame(800.0, Arr::get($payload, 'properties.金額入力.number'));
             } elseif ($account === '定期預金') {
                 $this->assertSame(1700.0, Arr::get($payload, 'properties.金額入力.number'));
@@ -226,7 +228,7 @@ class NotionMonthlySumTest extends TestCase
                 'results' => [
                     [
                         'properties' => [
-                            '口座' => ['select' => ['name' => '現金/普通預金']],
+                            '口座' => ['select' => ['name' => $this->targetAccount]],
                             '金額' => ['number' => 1000],
                         ],
                     ],
@@ -263,7 +265,7 @@ class NotionMonthlySumTest extends TestCase
 
             $body = $mail->render();
             $this->assertStringContainsString('繰越登録状況:', $body);
-            $this->assertStringContainsString('・成功: 現金/普通預金(作成日: 2026-01-31T12:00:00+00:00)', $body);
+            $this->assertStringContainsString(sprintf('・成功: %s(作成日: 2026-01-31T12:00:00+00:00)', $this->targetAccount), $body);
             $this->assertStringContainsString('・失敗: 定期預金', $body);
 
             return true;
@@ -272,7 +274,7 @@ class NotionMonthlySumTest extends TestCase
         $this->assertNotNull($sentMail);
         $this->assertSame([
             [
-                'account' => '現金/普通預金',
+                'account' => $this->targetAccount,
                 'status' => 'success',
                 'created_at' => '2026-01-31T12:00:00+00:00',
             ],
@@ -292,7 +294,7 @@ class NotionMonthlySumTest extends TestCase
         [$slackRequest] = $slackRequests->first();
         $text = Arr::get($slackRequest->data(), 'text');
         $this->assertStringContainsString('繰越登録状況:', $text);
-        $this->assertStringContainsString('・成功: 現金/普通預金(作成日: 2026-01-31T12:00:00+00:00)', $text);
+        $this->assertStringContainsString(sprintf('・成功: %s(作成日: 2026-01-31T12:00:00+00:00)', $this->targetAccount), $text);
         $this->assertStringContainsString('・失敗: 定期預金', $text);
 
         $this->assertCount(2, $carryOverRequests);
@@ -349,7 +351,7 @@ class NotionMonthlySumTest extends TestCase
                 'results' => [
                     [
                         'properties' => [
-                            '口座' => ['select' => ['name' => '現金/普通預金']],
+                            '口座' => ['select' => ['name' => $this->targetAccount]],
                             '金額' => [
                                 'type' => 'formula',
                                 'formula' => ['type' => 'number', 'number' => -6000],
@@ -380,7 +382,7 @@ class NotionMonthlySumTest extends TestCase
         });
         $this->assertNotNull($sentMail);
         $this->assertSame([
-            '現金/普通預金' => -6000.0,
+            $this->targetAccount => -6000.0,
             '定期預金' => 0.0,
         ], $sentMail->result['totals']);
         $this->assertSame(-6000.0, $sentMail->result['total_all']);
@@ -416,7 +418,7 @@ class NotionMonthlySumTest extends TestCase
                     'results' => [
                         [
                             'properties' => [
-                                '口座' => ['select' => ['name' => '現金/普通預金']],
+                                '口座' => ['select' => ['name' => $this->targetAccount]],
                                 '金額' => ['number' => 400],
                             ],
                         ],
@@ -448,7 +450,7 @@ class NotionMonthlySumTest extends TestCase
         });
         $this->assertNotNull($sentMail);
         $this->assertSame([
-            '現金/普通預金' => 400.0,
+            $this->targetAccount => 400.0,
             '定期預金' => 0.0,
         ], $sentMail->result['totals']);
         $this->assertSame(1, $sentMail->result['records_count']);
@@ -491,7 +493,7 @@ class NotionMonthlySumTest extends TestCase
                 'results' => [
                     [
                         'properties' => [
-                            '口座' => ['select' => ['name' => '現金/普通預金']],
+                            '口座' => ['select' => ['name' => $this->targetAccount]],
                             '金額' => ['number' => 5000],
                         ],
                     ],

@@ -8,8 +8,11 @@ use Illuminate\Support\Arr;
 
 class AdjustmentService
 {
+    private string $targetAccount;
+
     public function __construct(private NotionClient $notion)
     {
+        $this->targetAccount = (string) config('services.adjustment.target_account', '現金/普通預金');
     }
 
     public function calculate(float $bankBalance, float $cashOnHand): AdjustmentResult
@@ -21,7 +24,7 @@ class AdjustmentService
         $pages = $this->notion->queryByDateRange($targetMonthStart, $targetMonthEnd);
 
         $total = 0.0;
-        $targetAccount = '現金/普通預金';
+        $targetAccount = $this->targetAccount;
         $carryOverAccounts = config('services.monthly_sum.accounts', []);
 
         if ($carryOverAccounts === []) {

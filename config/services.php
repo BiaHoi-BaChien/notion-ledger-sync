@@ -77,6 +77,9 @@ return [
             ), static fn (string $item): bool => $item !== ''), SORT_STRING));
         })(),
     ],
+    'adjustment' => [
+        'target_account' => env('CASH_OR_SAVING', '現金/普通預金'),
+    ],
     'slack' => [
         'enabled' => filter_var(env('SLACK_BOT', false), FILTER_VALIDATE_BOOLEAN),
         'token' => env('SLACK_BOT_TOKEN'),
