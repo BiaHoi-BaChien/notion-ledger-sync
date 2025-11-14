@@ -65,10 +65,69 @@ return [
                 return array_values(array_unique($items, SORT_STRING));
             };
 
-            $configured = $parseList(env('MONTHLY_SUM_ACCOUNT'));
+            $configuredRaw = env('MONTHLY_SUM_ACCOUNT');
 
-            if ($configured !== []) {
-                return $configured;
+            if (is_string($configuredRaw)) {
+                $configuredRaw = trim($configuredRaw);
+            } elseif ($configuredRaw !== null && is_scalar($configuredRaw)) {
+                $configuredRaw = trim((string) $configuredRaw);
+            } elseif ($configuredRaw !== null) {
+                $configuredRaw = null;
+            }
+
+            if (is_string($configuredRaw) && $configuredRaw !== '') {
+                if (str_contains($configuredRaw, '+')) {
+                    $references = preg_split('/\s*\+\s*/', $configuredRaw);
+
+                    if ($references !== false) {
+                        $aggregated = [];
+
+                        foreach ($references as $reference) {
+                            $reference = trim($reference);
+
+                            if ($reference === '') {
+                                continue;
+                            }
+
+                            $referenceValue = env($reference);
+
+                            if ($referenceValue === null) {
+                                continue;
+                            }
+
+                            if (! is_string($referenceValue)) {
+                                if (is_scalar($referenceValue)) {
+                                    $referenceValue = (string) $referenceValue;
+                                } else {
+                                    continue;
+                                }
+                            }
+
+                            $referenceValue = trim($referenceValue);
+
+                            if ($referenceValue === '') {
+                                continue;
+                            }
+
+                            $aggregated = array_merge($aggregated, $parseList($referenceValue));
+                        }
+
+                        $aggregated = array_values(array_unique(array_filter(
+                            $aggregated,
+                            static fn (string $item): bool => $item !== ''
+                        ), SORT_STRING));
+
+                        if ($aggregated !== []) {
+                            return $aggregated;
+                        }
+                    }
+                } else {
+                    $configured = $parseList($configuredRaw);
+
+                    if ($configured !== []) {
+                        return $configured;
+                    }
+                }
             }
 
             return array_values(array_unique(array_filter(array_merge(
