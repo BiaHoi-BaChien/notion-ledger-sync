@@ -12,6 +12,21 @@ class LedgerPasskeyAuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const ES256_PRIVATE_KEY = <<<'KEY'
+-----BEGIN EC PRIVATE KEY-----
+MHcCAQEEIAtx4gqkAsr9lbLLQsLtnajY8s1RUCa5+8RTengu6Cs1oAoGCCqGSM49
+AwEHoUQDQgAELwkhgNi4YcLFv4ht2SD4toINIJH/GqUGl4bmpwgCnExa18iB3Cff
+phivkNx4iINJrNX59kZUb70lZYpwJwuN2w==
+-----END EC PRIVATE KEY-----
+KEY;
+
+    private const ES256_PUBLIC_KEY = <<<'KEY'
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAELwkhgNi4YcLFv4ht2SD4toINIJH/
+GqUGl4bmpwgCnExa18iB3CffphivkNx4iINJrNX59kZUb70lZYpwJwuN2w==
+-----END PUBLIC KEY-----
+KEY;
+
     public function test_registration_options_requires_authentication(): void
     {
         $this->postJson(route('ledger.passkey.register.options'))
@@ -122,18 +137,13 @@ class LedgerPasskeyAuthenticationTest extends TestCase
         $rawId = $this->base64url('es256-credential-id');
         $userHandle = config('services.ledger_passkey.user_handle');
 
-        $key = openssl_pkey_new([
-            'private_key_type' => OPENSSL_KEYTYPE_EC,
-            'curve_name' => 'prime256v1',
-        ]);
+        $key = openssl_pkey_get_private(self::ES256_PRIVATE_KEY);
 
         if ($key === false) {
-            $this->markTestSkipped('OpenSSL is unable to generate a prime256v1 key.');
+            $this->markTestSkipped('OpenSSL failed to load ES256 private key.');
         }
 
-        $details = openssl_pkey_get_details($key);
-        $publicKeyPem = is_array($details) ? ($details['key'] ?? '') : '';
-        $publicKeyDer = $this->pemToDer($publicKeyPem);
+        $publicKeyDer = $this->pemToDer(self::ES256_PUBLIC_KEY);
 
         if ($publicKeyDer === '') {
             $this->markTestSkipped('OpenSSL failed to export ES256 public key.');
@@ -300,4 +310,5 @@ class LedgerPasskeyAuthenticationTest extends TestCase
 
         return $decoded === false ? '' : $decoded;
     }
+
 }
