@@ -127,10 +127,17 @@ class LedgerPasskeyAuthenticationTest extends TestCase
             'curve_name' => 'prime256v1',
         ]);
 
-        $details = $key ? openssl_pkey_get_details($key) : null;
-        $publicKeyPem = $details['key'] ?? '';
+        if ($key === false) {
+            $this->markTestSkipped('OpenSSL is unable to generate a prime256v1 key.');
+        }
+
+        $details = openssl_pkey_get_details($key);
+        $publicKeyPem = is_array($details) ? ($details['key'] ?? '') : '';
         $publicKeyDer = $this->pemToDer($publicKeyPem);
-        $this->assertNotSame('', $publicKeyDer, 'Failed to export ES256 public key.');
+
+        if ($publicKeyDer === '') {
+            $this->markTestSkipped('OpenSSL failed to export ES256 public key.');
+        }
 
         $this->postJson(route('ledger.passkey.register.store'), [
             'id' => $rawId,
@@ -171,9 +178,11 @@ class LedgerPasskeyAuthenticationTest extends TestCase
         $signedData = $authenticatorData . $clientDataHash;
 
         $signature = '';
-        $signed = $key ? openssl_sign($signedData, $signature, $key, OPENSSL_ALGO_SHA256) : false;
-        $this->assertTrue($signed, 'Failed to generate ES256 signature for test.');
-        $this->assertNotSame('', $signature, 'Generated ES256 signature is empty.');
+        $signed = openssl_sign($signedData, $signature, $key, OPENSSL_ALGO_SHA256);
+
+        if ($signed === false || $signature === '') {
+            $this->markTestSkipped('OpenSSL failed to generate ES256 signature.');
+        }
 
         $this->postJson(route('ledger.passkey.login.verify'), [
             'id' => $rawId,
@@ -214,6 +223,8 @@ class LedgerPasskeyAuthenticationTest extends TestCase
         ])->assertCreated();
 
         $this->postJson(route('ledger.passkey.login.options'))->assertOk();
+
+        session()->forget('ledger_authenticated');
 
         $this->postJson(route('ledger.passkey.login.verify'), [
             'id' => $rawId,
