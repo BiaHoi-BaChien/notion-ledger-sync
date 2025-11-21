@@ -180,6 +180,16 @@ class NotionMonthlySumTest extends TestCase
             return $version === '2025-09-03'
                 && str_contains($request->url(), '/data_sources/ds123/');
         });
+
+        $notionRequests = Http::recorded(function ($request) {
+            return $request->url() === 'https://api.notion.com/v1/data_sources/ds123/query';
+        });
+        $this->assertNotEmpty($notionRequests);
+        [$firstNotionRequest] = $notionRequests[0];
+        $filter = Arr::get($firstNotionRequest->data(), 'filter.and');
+
+        $this->assertSame('2025-10-31T15:00:00+00:00', Arr::get($filter, '0.date.on_or_after'));
+        $this->assertSame('2025-11-30T15:00:00+00:00', Arr::get($filter, '1.date.before'));
         Http::assertSentCount(6);
 
         $this->assertCount(2, $carryOverRequests);
@@ -517,8 +527,8 @@ class NotionMonthlySumTest extends TestCase
             });
             $this->assertNotNull($sentMail);
             $this->assertSame('2025-06', $sentMail->result['year_month']);
-            $this->assertSame('2025-06-01T00:00:00+00:00', $sentMail->result['range']['start']);
-            $this->assertSame('2025-07-01T00:00:00+00:00', $sentMail->result['range']['end']);
+            $this->assertSame('2025-05-31T15:00:00+00:00', $sentMail->result['range']['start']);
+            $this->assertSame('2025-06-30T15:00:00+00:00', $sentMail->result['range']['end']);
         } finally {
             Carbon::setTestNow();
             Config::set('app.timezone', $originalTimezone);
