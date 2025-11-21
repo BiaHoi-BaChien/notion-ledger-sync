@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Mail\MonthlySumReport;
 use Carbon\CarbonImmutable;
+use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -532,6 +534,14 @@ class NotionMonthlySumTest extends TestCase
         $response->assertStatus(401);
     }
 
+    public function test_rejects_request_with_invalid_token(): void
+    {
+        $response = $this->withHeaders(['X-Webhook-Token' => 'invalid-token'])
+            ->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2024-10']);
+
+        $response->assertStatus(401);
+    }
+
     public function test_totals_include_configured_accounts_when_no_records(): void
     {
         Config::set('services.report.mail_to', 'notify@example.com');
@@ -597,5 +607,64 @@ class NotionMonthlySumTest extends TestCase
             $this->assertSame('2024-09-01', Arr::get($payload, 'properties.日付.date.start'));
             $this->assertSame(0.0, Arr::get($payload, 'properties.金額入力.number'));
         }
+    }
+
+    public function test_logs_slack_error_and_continues_other_notifications(): void
+    {
+        Config::set('services.report.mail_to', 'notify@example.com');
+        Config::set('services.slack.enabled', true);
+        Config::set('services.slack.token', 'slack-token');
+        Config::set('services.slack.dm_user_ids', 'U1');
+
+        Mail::fake();
+        Log::fake();
+        $carryOverRequests = [];
+
+        Http::fake([
+            'https://api.notion.com/v1/data_sources/ds123/query' => Http::response([
+                'results' => [
+                    [
+                        'properties' => [
+                            '口座' => ['select' => ['name' => $this->targetAccount]],
+                            '金額' => ['number' => 1000],
+                        ],
+                    ],
+                    [
+                        'properties' => [
+                            '口座' => ['select' => ['name' => '定期預金']],
+                            '金額' => ['number' => 2000],
+                        ],
+                    ],
+                ],
+                'has_more' => false,
+                'next_cursor' => null,
+            ]),
+            'https://api.notion.com/v1/pages' => function ($request) use (&$carryOverRequests) {
+                $carryOverRequests[] = $request;
+
+                return Http::response(['object' => 'page'], 200);
+            },
+            'https://slack.com/api/chat.postMessage' => Http::response([
+                'ok' => false,
+                'error' => 'invalid_auth',
+            ], 500),
+        ]);
+
+        $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
+            ->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2024-02']);
+
+        $response->assertNoContent();
+
+        Mail::assertSent(MonthlySumReport::class);
+        $this->assertCount(2, $carryOverRequests);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://slack.com/api/chat.postMessage';
+        });
+
+        Log::assertLogged('warning', function (MessageLogged $log) {
+            return $log->message === 'slack.notify.failed'
+                && str_contains($log->context['message'] ?? '', 'chat.postMessage');
+        });
     }
 }
