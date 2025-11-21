@@ -422,7 +422,16 @@
             calculateForm.querySelectorAll('button, input, select, textarea')
         );
 
-        setProcessingState(true, { exclude: elementsToPreserve });
+        setProcessingState(true, { exclude: elementsToPreserve, message: '計算中…' });
+    });
+
+    const registerForm = document.querySelector('.register-form');
+    registerForm?.addEventListener('submit', () => {
+        const elementsToPreserve = Array.from(
+            registerForm.querySelectorAll('button, input, select, textarea')
+        );
+
+        setProcessingState(true, { exclude: elementsToPreserve, message: '処理中' });
     });
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -480,6 +489,7 @@
 
     function setProcessingState(isProcessing, options = {}) {
         const exclude = Array.isArray(options.exclude) ? options.exclude : [];
+        const message = typeof options.message === 'string' ? options.message : '計算中…';
         const excludeSet = new Set(exclude);
         const interactiveElements = document.querySelectorAll('button, input, select, textarea');
 
@@ -508,7 +518,7 @@
             if (!document.querySelector('.processing-overlay')) {
                 const overlay = document.createElement('div');
                 overlay.className = 'processing-overlay';
-                overlay.textContent = '計算中…';
+                overlay.textContent = message;
                 document.body.appendChild(overlay);
             }
         } else {
