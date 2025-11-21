@@ -14,10 +14,14 @@ class MonthlySumService
     public function run(string $ym): array
     {
         [$y, $m] = array_map('intval', explode('-', $ym));
-        $start = CarbonImmutable::create($y, $m, 1, 0, 0, 0, 'UTC');
+        $timezone = config('app.timezone', 'UTC');
+        $start = CarbonImmutable::create($y, $m, 1, 0, 0, 0, $timezone);
         $end = $start->addMonth();
 
-        $pages = $this->notion->queryByDateRange($start, $end);
+        $queryStart = $start->utc();
+        $queryEnd = $end->utc();
+
+        $pages = $this->notion->queryByDateRange($queryStart, $queryEnd);
 
         $totals = [];
         $count = 0;
@@ -75,8 +79,8 @@ class MonthlySumService
         return [
             'year_month' => $ym,
             'range' => [
-                'start' => $start->toIso8601String(),
-                'end' => $end->toIso8601String(),
+                'start' => $queryStart->toIso8601String(),
+                'end' => $queryEnd->toIso8601String(),
             ],
             'totals' => $totals,
             'total_all' => $totalAll,
