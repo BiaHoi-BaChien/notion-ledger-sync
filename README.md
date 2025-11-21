@@ -80,6 +80,7 @@ Web サーバーを立ち上げるには `php artisan serve` を実行します�
 | `LEDGER_FORM_USERNAME_HASH` / `LEDGER_FORM_PASSWORD_HASH` | それぞれ `password_hash(..., PASSWORD_BCRYPT)` で生成したハッシュを設定すると、ID／パスワードでのログインを有効化します。 |
 | `LEDGER_PASSKEY_RP_ID` / `LEDGER_PASSKEY_RP_NAME` | パスキー認証に使用する RP 情報。未指定時は `APP_URL` からホスト名を自動取得します。 |
 | `LEDGER_PASSKEY_USER_*` | Ledger フォーム専用の仮想ユーザー情報。単一ユーザー運用を想定しています。 |
+| `CASH_OR_SAVING`（`services.adjustment.target_account`） | 調整レコードを登録する口座名。未設定の場合は `現金/普通預金` をターゲットにします。 |
 
 ```bash
 php -r "echo password_hash('希望するログイン名', PASSWORD_BCRYPT), PHP_EOL;"
@@ -105,7 +106,7 @@ X-Webhook-Token: <WEBHOOK_TOKEN>
 
 1. `/login` にアクセスし、パスキー登録またはクレデンシャルログインでサインインします。初回登録時は「端末を登録」ボタンからパスキーを作成します。【F:app/Http/Controllers/LedgerAuthController.php†L42-L118】
 2. ログイン後に表示されるフォームで銀行口座残高と手持ち現金を入力し、「調整額計算」を押すと Notion の対象口座との差分が表示されます。【F:app/Http/Controllers/LedgerAdjustmentController.php†L28-L44】【F:resources/views/ledger/adjustment.blade.php†L55-L144】
-3. 調整額を Notion に登録したい場合は「調整額を家計簿に登録」をクリックします。金額は自動で正負を判定し、摘要やカテゴリーを「調整」で登録します。【F:app/Services/Adjustment/AdjustmentService.php†L63-L80】【F:app/Services/Notion/NotionClient.php†L101-L159】
+3. 調整額を Notion に登録したい場合は「調整額を家計簿に登録」をクリックします。金額は自動で正負を判定し、摘要やカテゴリーを「調整」で登録します。ターゲットとなる口座は `CASH_OR_SAVING`（または `services.adjustment.target_account`）で切り替えられます。【F:app/Services/Adjustment/AdjustmentService.php†L63-L80】【F:app/Services/Notion/NotionClient.php†L101-L159】【F:config/services.php†L136-L150】
 4. 使い終わったらヘッダーの「ログアウト」からセッションを終了します。【F:resources/views/ledger/adjustment.blade.php†L24-L36】
 
 ## サブディレクトリ配下にデプロイする場合
