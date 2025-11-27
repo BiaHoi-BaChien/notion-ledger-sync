@@ -154,7 +154,7 @@ return [
         'password_hash' => env('LEDGER_FORM_PASSWORD_HASH', ''),
     ],
     'ledger_passkey' => (static function (): array {
-        $appUrl = env('APP_URL', 'http://localhost');
+        $appUrl = config('app.url', 'http://localhost');
         $host = parse_url($appUrl, PHP_URL_HOST);
 
         if (! is_string($host) || $host === '') {

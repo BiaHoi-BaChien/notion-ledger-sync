@@ -13,8 +13,9 @@ class LedgerAuthControllerTest extends TestCase
 
     public function testFinishAuthenticationVerifiesSignatureAndUpdatesCredential(): void
     {
-        $rpId = 'example.test';
-        $origin = 'https://example.test';
+        $appUrl = rtrim(config('app.url', 'http://localhost'), '/');
+        $rpId = parse_url($appUrl, PHP_URL_HOST) ?: 'localhost';
+        $origin = $appUrl;
 
         config([
             'services.ledger_passkey' => [
@@ -102,8 +103,9 @@ class LedgerAuthControllerTest extends TestCase
 
     public function testFinishAuthenticationReturns422WhenSignatureValidationFails(): void
     {
-        $rpId = 'example.test';
-        $origin = 'https://example.test';
+        $appUrl = rtrim(config('app.url', 'http://localhost'), '/');
+        $rpId = parse_url($appUrl, PHP_URL_HOST) ?: 'localhost';
+        $origin = $appUrl;
 
         config([
             'services.ledger_passkey' => [
