@@ -195,7 +195,6 @@ class LedgerAuthController extends Controller
 
         return response()->json([
             'challenge' => $challenge,
-            'challenge_token' => $this->createChallengeToken($challenge),
             'rpId' => $config['rp_id'],
             'timeout' => 60000,
             'allowCredentials' => $allowCredentials,
@@ -213,7 +212,6 @@ class LedgerAuthController extends Controller
                 'rawId' => ['required', 'string'],
                 'type' => ['required', 'string', 'in:public-key'],
                 'challenge' => ['required', 'string'],
-                'challenge_token' => ['nullable', 'string'],
                 'signCount' => ['nullable', 'integer', 'min:0'],
                 'response' => ['required', 'array'],
                 'response.clientDataJSON' => ['required', 'string'],
@@ -232,14 +230,14 @@ class LedgerAuthController extends Controller
         $sessionChallenge = $request->session()->pull('webauthn.authentication.challenge');
 
         if (! is_string($sessionChallenge)) {
-            if (! $this->isChallengeTokenValid($validated['challenge'], $validated['challenge_token'] ?? null)) {
-                $this->logDebug('Ledger passkey authentication failed: missing session challenge.');
+            $this->logDebug('Ledger passkey authentication failed: missing session challenge.');
 
-                throw ValidationException::withMessages([
-                    'challenge' => '認証用チャレンジが期限切れです。再試行してください。',
-                ]);
-            }
-        } elseif (! hash_equals($sessionChallenge, $validated['challenge'])) {
+            throw ValidationException::withMessages([
+                'challenge' => '認証用チャレンジが期限切れです。再試行してください。',
+            ]);
+        }
+
+        if (! hash_equals($sessionChallenge, $validated['challenge'])) {
             $this->logDebug('Ledger passkey authentication failed: challenge mismatch.', [
                 'session_challenge' => $sessionChallenge,
                 'provided_challenge' => $validated['challenge'],
@@ -388,53 +386,6 @@ class LedgerAuthController extends Controller
         }
 
         return $decoded;
-    }
-
-    private function createChallengeToken(string $challenge): string
-    {
-        $secret = $this->getChallengeSecret();
-
-        if ($secret === '') {
-            return '';
-        }
-
-        $hashed = hash_hmac('sha256', $challenge, $secret, true);
-
-        if ($hashed === false || $hashed === '') {
-            return '';
-        }
-
-        return $this->encodeBase64Url($hashed);
-    }
-
-    private function isChallengeTokenValid(string $challenge, ?string $providedToken): bool
-    {
-        if (! is_string($providedToken) || $providedToken === '') {
-            return false;
-        }
-
-        $expectedToken = $this->createChallengeToken($challenge);
-
-        return $expectedToken !== '' && hash_equals($expectedToken, $providedToken);
-    }
-
-    private function getChallengeSecret(): string
-    {
-        $appKey = config('app.key');
-
-        if (! is_string($appKey) || $appKey === '') {
-            return '';
-        }
-
-        if (str_starts_with($appKey, 'base64:')) {
-            $decoded = base64_decode(substr($appKey, 7));
-
-            if ($decoded !== false && $decoded !== '') {
-                return $decoded;
-            }
-        }
-
-        return $appKey;
     }
 
     private function resolveExpectedOrigin(Request $request): ?string
