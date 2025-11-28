@@ -4,3 +4,4 @@
     $faviconPath = $prefix === '' ? 'favicon.svg' : $prefix.'/favicon.svg';
 @endphp
 <link rel="icon" type="image/svg+xml" href="{{ $baseUrl.'/'.$faviconPath }}">
+<link rel="shortcut icon" type="image/svg+xml" href="{{ $baseUrl.'/'.$faviconPath }}">
