@@ -8,6 +8,14 @@ Route::get('/login', [LedgerAuthController::class, 'show'])->name('ledger.login.
 Route::post('/logout', [LedgerAuthController::class, 'logout'])->name('ledger.logout');
 Route::post('/login/credentials', [LedgerAuthController::class, 'authenticateWithCredentials'])->name('ledger.credentials.login');
 
+Route::get('/favicon.ico', function () {
+    $prefix = trim(config('app.url_prefix', ''), '/');
+
+    $faviconPath = $prefix === '' ? '/favicon.svg' : '/'.$prefix.'/favicon.svg';
+
+    return redirect($faviconPath, 302);
+});
+
 Route::prefix('webauthn')->group(function (): void {
     Route::middleware('ledger.auth')->group(function (): void {
         Route::post('/register/options', [LedgerAuthController::class, 'beginRegistration'])->name('ledger.passkey.register.options');
