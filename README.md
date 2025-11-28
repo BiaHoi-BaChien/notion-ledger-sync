@@ -82,6 +82,10 @@ Web サーバーを立ち上げるには `php artisan serve` を実行します�
 | `LEDGER_PASSKEY_USER_*` | Ledger フォーム専用の仮想ユーザー情報。単一ユーザー運用を想定しています。 |
 | `CASH_OR_SAVING`（`services.adjustment.target_account`） | 調整レコードを登録する口座名。未設定の場合は `現金/普通預金` をターゲットにします。 |
 
+> パスキー認証では RP ID と実際にアクセスするドメインが一致している必要があります。`APP_URL` にサブディレクトリ（例: `/business_card`）
+> を含めて配信する場合でも、`LEDGER_PASSKEY_RP_ID` は `clb-biahoi.net` のようにホスト名のみ（スキームやパスなし）を指定してくださ
+> い。RP ID が不一致だと 422 エラーになります。
+
 ```bash
 php -r "echo password_hash('希望するログイン名', PASSWORD_BCRYPT), PHP_EOL;"
 php -r "echo password_hash('希望するパスワード', PASSWORD_BCRYPT), PHP_EOL;"
