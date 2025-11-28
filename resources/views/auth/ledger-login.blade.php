@@ -201,12 +201,15 @@
                 setStatus('パスキー認証を開始しています…');
                 const options = await postJson(routes.login_options, {});
 
+                const challengeToken = options.challenge_token ?? null;
+
                 if (!options.allowCredentials || options.allowCredentials.length === 0) {
                     setStatus('登録済みのパスキーがありません。先に登録を行ってください。', true);
                     return;
                 }
 
-                const publicKey = transformRequestOptions(options);
+                const { challenge_token: _ignoredToken, ...requestOptions } = options;
+                const publicKey = transformRequestOptions(requestOptions);
                 const assertion = await navigator.credentials.get({ publicKey });
 
                 const signCount = extractSignCount(assertion.response.authenticatorData);
@@ -225,6 +228,7 @@
                     },
                     clientExtensionResults: assertion.getClientExtensionResults?.() ?? {},
                     challenge: options.challenge,
+                    challenge_token: challengeToken,
                     signCount,
                 };
 
