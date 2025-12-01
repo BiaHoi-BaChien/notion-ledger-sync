@@ -5,8 +5,8 @@ Notion の家計簿データベースから月次の入出金を集計し、繰�
 
 ## 主な機能
 
-- **月次集計 Webhook** — `POST /api/notion_webhook/monthly-sum` に対して年月 (`YYYY-MM`) を指定すると、対象期間の Notion ページを取得して口座別・総合計・件数を集計します。設定した口座が見つからない場合は 0 円で補完し、翌月 1 日付の繰越ページを Notion に自動登録します。【F:app/Http/Controllers/NotionMonthlySumController.php†L15-L64】【F:app/Services/MonthlySumService.php†L13-L84】
-- **通知チャンネル** — 月次集計の結果をメール（Mailable）と Slack DM に送信できます。送信に失敗したチャンネルはログ出力し、他チャンネルには影響しません。【F:app/Http/Controllers/NotionMonthlySumController.php†L33-L62】【F:app/Services/Notify】
+- **月次集計 Webhook** — `POST /api/notion_webhook/monthly-sum` に対して年月 (`YYYY-MM`) を指定すると、対象期間の Notion ページを取得して口座別・総合計・件数を集計します。年月を省略した場合は先月が対象となり、設定した口座が見つからない場合は 0 円で補完します。繰越ページは集計対象月の翌月 1 日付（年月省略時は今月 1 日付）で Notion に自動登録します。【F:app/Http/Controllers/NotionMonthlySumController.php†L15-L72】【F:app/Services/MonthlySumService.php†L13-L89】
+- **通知チャンネル** — 月次集計の結果をメール（Mailable）と Slack DM に送信できます。送信に失敗したチャンネルはログ出力し、他チャンネルには影響しません。【F:app/Http/Controllers/NotionMonthlySumController.php†L33-L63】【F:app/Services/Notify】
 - **Ledger 調整フォーム** — ログイン後のフォームで銀行残高と手持ち現金を入力すると、Notion 上の該当口座（既定は `現金/普通預金`）との差分を計算し、ワンクリックで調整レコードを Notion に登録できます。【F:app/Http/Controllers/LedgerAdjustmentController.php†L12-L71】【F:app/Services/Adjustment/AdjustmentService.php†L13-L61】
 - **パスキー対応ログイン** — Ledger フォームはパスキー（WebAuthn/FIDO2）による生体認証ログインに対応し、サインカウント検証や登録済みクレデンシャルの除外処理を行います。必要に応じてハッシュ化した ID／パスワードによるログインも併用可能です。【F:app/Http/Controllers/LedgerAuthController.php†L19-L211】【F:config/services.php†L39-L77】
 
@@ -97,10 +97,10 @@ X-Webhook-Token: <WEBHOOK_TOKEN>
 { "year_month": "2024-12" }
 ```
 
-- `year_month` を省略すると `APP_TIMEZONE` 上の現在年月を対象とします。【F:app/Http/Controllers/NotionMonthlySumController.php†L25-L32】
-- Notion API から取得したページを集計し、結果を Slack／メールに送信します。【F:app/Services/MonthlySumService.php†L23-L57】
-- 各口座の合計値と総合計、処理件数、繰越ページの作成成否を含むペイロードを通知します。【F:app/Services/MonthlySumService.php†L59-L84】【F:resources/views/mail/monthly_sum_report.blade.php†L1-L88】
-- 成功時のレスポンスは HTTP 204（ボディなし）です。【F:app/Http/Controllers/NotionMonthlySumController.php†L64】
+- `year_month` を省略すると `APP_TIMEZONE` 上の先月を対象とし、繰越ページの日付は今月 1 日になります。【F:app/Http/Controllers/NotionMonthlySumController.php†L25-L72】【F:app/Services/MonthlySumService.php†L13-L89】
+- Notion API から取得したページを集計し、結果を Slack／メールに送信します。【F:app/Services/MonthlySumService.php†L21-L52】【F:app/Http/Controllers/NotionMonthlySumController.php†L43-L63】
+- 各口座の合計値と総合計、処理件数、繰越ページの作成成否を含むペイロードを通知します。【F:app/Services/MonthlySumService.php†L54-L89】【F:resources/views/mail/monthly_sum_report.blade.php†L1-L88】
+- 成功時のレスポンスは HTTP 204（ボディなし）です。【F:app/Http/Controllers/NotionMonthlySumController.php†L72】
 
 ## Ledger 調整フォームの使い方
 
