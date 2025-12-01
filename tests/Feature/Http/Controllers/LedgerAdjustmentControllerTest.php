@@ -4,6 +4,7 @@ namespace Tests\Feature\Http\Controllers;
 
 use App\Services\Adjustment\AdjustmentResult;
 use App\Services\Adjustment\AdjustmentService;
+use App\Support\PasskeyConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Config;
 use RuntimeException;
@@ -129,14 +130,14 @@ class LedgerAdjustmentControllerTest extends TestCase
         ]);
     }
 
-    public function test_throws_when_passkey_config_is_missing(): void
+    public function test_falls_back_to_default_passkey_config_when_missing(): void
     {
         Config::set('services.ledger_passkey', null);
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('ledger_passkey configuration is missing.');
-
-        $this->withSession(['ledger_authenticated' => true])
+        $response = $this->withSession(['ledger_authenticated' => true])
             ->get('/');
+
+        $response->assertOk();
+        $response->assertViewHas('passkey', PasskeyConfig::resolve());
     }
 }

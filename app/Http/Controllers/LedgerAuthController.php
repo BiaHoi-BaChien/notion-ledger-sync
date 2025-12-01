@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LedgerCredential;
 use App\Services\WebAuthn\AssertionValidator;
 use App\Services\WebAuthn\Exceptions\AssertionValidationException;
+use App\Support\PasskeyConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -13,7 +14,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use RuntimeException;
 
 class LedgerAuthController extends Controller
 {
@@ -348,13 +348,7 @@ class LedgerAuthController extends Controller
      */
     private function getPasskeyConfig(): array
     {
-        $config = config('services.ledger_passkey');
-
-        if (! is_array($config)) {
-            throw new RuntimeException('ledger_passkey configuration is missing.');
-        }
-
-        return $config;
+        return PasskeyConfig::resolve();
     }
 
     private function isCredentialLoginEnabled(): bool

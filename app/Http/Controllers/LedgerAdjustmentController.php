@@ -3,9 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Services\Adjustment\AdjustmentService;
+use App\Support\PasskeyConfig;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use RuntimeException;
 use Throwable;
 
 class LedgerAdjustmentController extends Controller
@@ -95,17 +95,7 @@ class LedgerAdjustmentController extends Controller
      */
     private function getPasskeyConfig(): array
     {
-        if (! config()->has('services.ledger_passkey')) {
-            throw new RuntimeException('ledger_passkey configuration is missing.');
-        }
-
-        $config = config('services.ledger_passkey');
-
-        if (! is_array($config)) {
-            throw new RuntimeException('ledger_passkey configuration is missing.');
-        }
-
-        return $config;
+        return PasskeyConfig::resolve();
     }
 
     /**
