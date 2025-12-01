@@ -8,8 +8,8 @@ use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -627,7 +627,7 @@ class NotionMonthlySumTest extends TestCase
         Config::set('services.slack.dm_user_ids', 'U1');
 
         Mail::fake();
-        Log::fake();
+        Event::fake([MessageLogged::class]);
         $carryOverRequests = [];
 
         Http::fake([
@@ -672,8 +672,9 @@ class NotionMonthlySumTest extends TestCase
             return $request->url() === 'https://slack.com/api/chat.postMessage';
         });
 
-        Log::assertLogged('warning', function (MessageLogged $log) {
-            return $log->message === 'slack.notify.failed'
+        Event::assertDispatched(MessageLogged::class, function (MessageLogged $log) {
+            return $log->level === 'warning'
+                && $log->message === 'slack.notify.failed'
                 && str_contains($log->context['message'] ?? '', 'chat.postMessage');
         });
     }
