@@ -490,7 +490,7 @@ class NotionMonthlySumTest extends TestCase
         $response->assertStatus(422);
     }
 
-    public function test_defaults_to_current_month_when_year_month_missing(): void
+    public function test_defaults_to_previous_month_when_year_month_missing(): void
     {
         Config::set('services.report.mail_to', 'notify@example.com');
         Config::set('services.slack.enabled', false);
@@ -528,9 +528,9 @@ class NotionMonthlySumTest extends TestCase
                 return true;
             });
             $this->assertNotNull($sentMail);
-            $this->assertSame('2025-06', $sentMail->result['year_month']);
-            $this->assertSame('2025-05-31T15:00:00+00:00', $sentMail->result['range']['start']);
-            $this->assertSame('2025-06-30T15:00:00+00:00', $sentMail->result['range']['end']);
+            $this->assertSame('2025-05', $sentMail->result['year_month']);
+            $this->assertSame('2025-04-30T15:00:00+00:00', $sentMail->result['range']['start']);
+            $this->assertSame('2025-05-31T15:00:00+00:00', $sentMail->result['range']['end']);
         } finally {
             Carbon::setTestNow();
             Config::set('app.timezone', $originalTimezone);

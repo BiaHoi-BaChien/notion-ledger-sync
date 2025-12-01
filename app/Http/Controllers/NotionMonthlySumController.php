@@ -24,7 +24,10 @@ class NotionMonthlySumController extends Controller
         }
 
         $timezone = config('app.timezone', 'UTC');
-        $yearMonth = $request->validated('year_month', Carbon::now($timezone)->format('Y-m'));
+        $yearMonth = $request->validated(
+            'year_month',
+            Carbon::now($timezone)->subMonth()->format('Y-m')
+        );
 
         $started = microtime(true);
         $result = $service->run($yearMonth);
