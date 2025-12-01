@@ -95,6 +95,10 @@ class LedgerAdjustmentController extends Controller
      */
     private function getPasskeyConfig(): array
     {
+        if (! config()->has('services.ledger_passkey')) {
+            throw new RuntimeException('ledger_passkey configuration is missing.');
+        }
+
         $config = config('services.ledger_passkey');
 
         if (! is_array($config)) {
