@@ -57,7 +57,9 @@ class NotionMonthlySumController extends Controller
                 $notified['slack'] = true;
             }
         } catch (\Throwable $e) {
-            Log::warning('slack.notify.failed', ['message' => $e->getMessage()]);
+            Log::warning('slack.notify.failed', [
+                'message' => sprintf('chat.postMessage: %s', $e->getMessage()),
+            ]);
         }
 
         Log::info('notion.monthly_sum.completed', [
