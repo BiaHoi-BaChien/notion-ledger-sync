@@ -138,6 +138,11 @@
             flex: 1 1 220px;
             width: 100%;
         }
+        .no-adjustment-message {
+            margin: 0.4rem 0 0;
+            color: #dc2626;
+            font-weight: 700;
+        }
         .primary-btn,
         .secondary-btn {
             border: none;
@@ -157,6 +162,10 @@
             background: linear-gradient(135deg, #0ea5e9, #0284c7);
             color: #fff;
             flex: 1 1 220px;
+        }
+        .secondary-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
         .primary-btn:active,
         .secondary-btn:active {
@@ -340,6 +349,7 @@
                     $formattedPhysicalTotal = number_format($result->physicalTotal, 0, '.', ',');
                     $formattedNotionTotal = number_format($result->notionTotal, 0, '.', ',');
                     $formattedAdjustment = number_format($result->adjustmentAmount, 0, '.', ',');
+                    $isZeroAdjustment = abs((float) $result->adjustmentAmount) < 0.00001;
                 @endphp
                 <div class="result-grid">
                     <div class="result-item">
@@ -365,7 +375,10 @@
                             @csrf
                             <input type="hidden" name="bank_balance" value="{{ $inputs['bank_balance'] }}">
                             <input type="hidden" name="cash_on_hand" value="{{ $inputs['cash_on_hand'] }}">
-                            <button class="secondary-btn" type="submit">調整額を家計簿に登録</button>
+                            <button class="secondary-btn" type="submit" @if($isZeroAdjustment) disabled @endif>調整額を家計簿に登録</button>
+                            @if ($isZeroAdjustment)
+                                <p class="no-adjustment-message" role="status">調整額は必要ありません</p>
+                            @endif
                         </form>
                     </div>
                 </div>
