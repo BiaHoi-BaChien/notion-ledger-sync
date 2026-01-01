@@ -7,6 +7,11 @@ Notion月次集計 {{ $result['year_month'] }} 完了
 実行時刻: {{ $formattedRunAt }}
 期間: {{ $result['range']['start'] }} - {{ $result['range']['end'] }}
 処理時間: {{ number_format($durationMs, 2) }} ms
+@if(!empty($result['aborted_reason'] ?? null))
+処理中止: {{ $result['aborted_reason'] }}
+集計結果: なし
+繰越登録状況: 実施なし
+@else
 @foreach($result['totals'] as $account => $amount)
 {{ $account }}: {{ number_format((float) $amount) }}
 @endforeach
@@ -27,5 +32,6 @@ Notion月次集計 {{ $result['year_month'] }} 完了
 }, $carryOverSuccess)) }}
 @endif
 ・失敗: {{ implode(', ', array_map(fn ($entry) => $entry['account'], $carryOverFailure)) }}
+@endif
 @endif
 @endif

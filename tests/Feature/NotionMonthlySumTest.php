@@ -40,6 +40,78 @@ class NotionMonthlySumTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_skips_when_carry_over_already_exists(): void
+    {
+        CarbonImmutable::setTestNow(CarbonImmutable::create(2025, 11, 30, 0, 0, 0, 'UTC'));
+
+        Config::set('services.report.mail_to', 'notify@example.com');
+        Config::set('services.slack.enabled', true);
+        Config::set('services.slack.token', 'slack-token');
+        Config::set('services.slack.dm_user_ids', 'U1');
+        Config::set('services.slack.unfurl_links', false);
+        Config::set('services.slack.unfurl_media', false);
+
+        Mail::fake();
+
+        $notionQueries = [];
+
+        Http::fake(function ($request) use (&$notionQueries) {
+            if ($request->url() === 'https://api.notion.com/v1/data_sources/ds123/query') {
+                $notionQueries[] = $request;
+
+                return Http::response([
+                    'results' => [['id' => 'existing-carry-over']],
+                    'has_more' => false,
+                    'next_cursor' => null,
+                ]);
+            }
+
+            if ($request->url() === 'https://slack.com/api/chat.postMessage') {
+                return Http::response(['ok' => true], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $response = $this->withHeaders(['X-Webhook-Token' => 'hook-token'])
+            ->postJson('/api/notion_webhook/monthly-sum', ['year_month' => '2025-11']);
+
+        $response->assertNoContent();
+
+        Mail::assertSent(MonthlySumReport::class, function (MonthlySumReport $mail) {
+            $body = $mail->render();
+
+            $this->assertStringContainsString('処理中止: 既存の繰越ページが見つかったため処理を中止しました。', $body);
+            $this->assertStringContainsString('集計結果: なし', $body);
+            $this->assertStringContainsString('繰越登録状況: 実施なし', $body);
+
+            return true;
+        });
+
+        $slackRequests = Http::recorded(function ($request) {
+            return $request->url() === 'https://slack.com/api/chat.postMessage';
+        });
+
+        $this->assertCount(1, $slackRequests);
+
+        [$slackRequest] = $slackRequests->first();
+        $text = Arr::get($slackRequest->data(), 'text');
+        $this->assertStringContainsString('処理中止: 既存の繰越ページが見つかったため処理を中止しました。', $text);
+        $this->assertStringContainsString('集計結果: なし', $text);
+        $this->assertStringContainsString('繰越登録状況: 実施なし', $text);
+        $this->assertStringNotContainsString('件数:', $text);
+
+        Http::assertNotSent(function ($request) {
+            return $request->url() === 'https://api.notion.com/v1/pages';
+        });
+
+        $this->assertCount(1, $notionQueries);
+        $filter = Arr::get($notionQueries[0]->data(), 'filter.and');
+
+        $this->assertSame('2025-12-01', Arr::get($filter, '0.date.equals'));
+        $this->assertSame('繰越', Arr::get($filter, '1.select.equals'));
+    }
+
     public function test_monthly_sum_success(): void
     {
         CarbonImmutable::setTestNow(CarbonImmutable::create(2025, 11, 30, 0, 0, 0, 'UTC'));
