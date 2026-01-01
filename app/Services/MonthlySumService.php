@@ -21,6 +21,23 @@ class MonthlySumService
         $queryStart = $start->utc();
         $queryEnd = $end->utc();
 
+        $carryOverDate = $start->addMonth();
+
+        if ($this->notion->hasCarryOverOnDate($carryOverDate)) {
+            return [
+                'year_month' => $ym,
+                'range' => [
+                    'start' => $queryStart->toIso8601String(),
+                    'end' => $queryEnd->toIso8601String(),
+                ],
+                'totals' => [],
+                'total_all' => 0,
+                'records_count' => 0,
+                'carry_over_status' => [],
+                'aborted_reason' => '既存の繰越ページが見つかったため処理を中止しました。',
+            ];
+        }
+
         $pages = $this->notion->queryByDateRange($queryStart, $queryEnd);
 
         $totals = [];
@@ -51,14 +68,14 @@ class MonthlySumService
             $totals = array_merge($defaultTotals, $totals);
         }
 
-        $carryOverDate = $start->addMonth()->toDateString();
+        $carryOverDateString = $carryOverDate->toDateString();
 
         $carryOverStatus = [];
         $createdAt = CarbonImmutable::now('UTC')->toIso8601String();
 
         foreach ($totals as $account => $amount) {
             try {
-                $this->notion->createCarryOverPage($account, (float) $amount, $carryOverDate);
+                $this->notion->createCarryOverPage($account, (float) $amount, $carryOverDateString);
 
                 $carryOverStatus[] = [
                     'account' => $account,

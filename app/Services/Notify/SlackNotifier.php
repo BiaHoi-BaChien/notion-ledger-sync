@@ -42,6 +42,14 @@ class SlackNotifier
             sprintf('Notion月次集計 %s 完了', $result['year_month']),
         ];
 
+        if (! empty($result['aborted_reason'] ?? null)) {
+            $lines[] = '処理中止: '.$result['aborted_reason'];
+            $lines[] = '集計結果: なし';
+            $lines[] = '繰越登録状況: 実施なし';
+
+            return implode("\n", $lines);
+        }
+
         foreach ($result['totals'] as $account => $amount) {
             $lines[] = sprintf('%s: %s', $account, number_format((float) $amount));
         }

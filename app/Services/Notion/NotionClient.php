@@ -81,6 +81,58 @@ class NotionClient
         return $results;
     }
 
+    public function hasCarryOverOnDate(CarbonInterface $date): bool
+    {
+        $dataSourceId = config('services.notion.data_source_id');
+        $databaseId = config('services.notion.database_id');
+        $token = config('services.notion.token');
+        $version = config('services.notion.version', '2025-09-03');
+
+        if (blank($token)) {
+            throw new RuntimeException('Notion API credentials are not configured.');
+        }
+
+        if (blank($dataSourceId)) {
+            if (blank($databaseId)) {
+                throw new RuntimeException('Notion data source ID is not configured.');
+            }
+
+            $dataSourceId = $this->resolveDataSourceIdFromDatabase($databaseId, $token, $version);
+        }
+
+        $url = sprintf('https://api.notion.com/v1/data_sources/%s/query', $dataSourceId);
+
+        $headers = [
+            'Authorization' => 'Bearer '.$token,
+            'Notion-Version' => $version,
+            'Content-Type' => 'application/json',
+        ];
+
+        $payload = [
+            'filter' => [
+                'and' => [
+                    [
+                        'property' => '日付',
+                        'date' => ['equals' => $date->toDateString()],
+                    ],
+                    [
+                        'property' => '種類',
+                        'select' => ['equals' => '繰越'],
+                    ],
+                ],
+            ],
+            'page_size' => 1,
+        ];
+
+        $response = Http::withHeaders($headers)->post($url, $payload);
+        $response->throw();
+
+        $json = $response->json();
+        $pages = $json['results'] ?? [];
+
+        return ! empty($pages);
+    }
+
     public function createCarryOverPage(string $account, float $amount, string $date): void
     {
         $databaseId = config('services.notion.database_id');
