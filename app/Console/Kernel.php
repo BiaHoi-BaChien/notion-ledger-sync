@@ -9,7 +9,11 @@ class Kernel extends ConsoleKernel
 {
     protected function schedule(Schedule $schedule): void
     {
-        //
+        if (config('services.monthly_sum.schedule_enabled', true)) {
+            $schedule->command('notion:monthly-sum')
+                ->monthlyOn(1, '0:00')
+                ->timezone(config('app.timezone', 'UTC'));
+        }
     }
 
     protected function commands(): void

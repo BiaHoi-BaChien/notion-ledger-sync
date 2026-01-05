@@ -11,6 +11,7 @@ return [
         'mail_to' => env('SYNC_REPORT_MAIL_TO'),
     ],
     'monthly_sum' => [
+        'schedule_enabled' => filter_var(env('MONTHLY_SUM_SCHEDULE_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
         'accounts' => (static function (): array {
             $parseList = static function (?string $value): array {
                 if ($value === null) {
