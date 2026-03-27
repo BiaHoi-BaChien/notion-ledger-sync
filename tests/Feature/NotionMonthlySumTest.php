@@ -29,6 +29,7 @@ class NotionMonthlySumTest extends TestCase
         Config::set('services.notion.database_id', 'carryover-db');
         Config::set('services.notion.version', '2025-09-03');
         Config::set('services.webhook.token', 'hook-token');
+        Config::set('services.monthly_sum.skip_if_carry_over_exists', false);
     }
 
     protected function tearDown(): void
@@ -50,6 +51,7 @@ class NotionMonthlySumTest extends TestCase
         Config::set('services.slack.dm_user_ids', 'U1');
         Config::set('services.slack.unfurl_links', false);
         Config::set('services.slack.unfurl_media', false);
+        Config::set('services.monthly_sum.skip_if_carry_over_exists', true);
 
         Mail::fake();
 

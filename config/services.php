@@ -12,6 +12,7 @@ return [
     ],
     'monthly_sum' => [
         'schedule_enabled' => filter_var(env('MONTHLY_SUM_SCHEDULE_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+        'skip_if_carry_over_exists' => filter_var(env('MONTHLY_SUM_SKIP_IF_CARRY_OVER_EXISTS', false), FILTER_VALIDATE_BOOLEAN),
         'accounts' => (static function (): array {
             $parseList = static function (?string $value): array {
                 if ($value === null) {

@@ -66,10 +66,16 @@ class NotionMonthlySumCommand extends Command
             'duration_ms' => $durationMs,
         ]);
 
-        $this->line(json_encode(
+        $output = json_encode(
             array_merge($payload, ['notified' => $notified]),
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-        ));
+        );
+
+        if (is_string($output)) {
+            foreach (preg_split('/\R/', $output) ?: [] as $line) {
+                $this->line($line);
+            }
+        }
 
         return self::SUCCESS;
     }

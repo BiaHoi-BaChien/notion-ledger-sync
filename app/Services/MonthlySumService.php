@@ -23,7 +23,12 @@ class MonthlySumService
 
         $carryOverDate = $start->addMonth();
 
-        if ($this->notion->hasCarryOverOnDate($carryOverDate)) {
+        $skipIfCarryOverExists = filter_var(
+            config('services.monthly_sum.skip_if_carry_over_exists', false),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if ($skipIfCarryOverExists && $this->notion->hasCarryOverOnDate($carryOverDate)) {
             return [
                 'year_month' => $ym,
                 'range' => [
