@@ -5,8 +5,10 @@ namespace Tests\Feature\Http\Controllers;
 use App\Models\LedgerCredential;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\TestCase;
 
+#[RequiresPhpExtension('pdo_sqlite')]
 class LedgerAuthControllerTest extends TestCase
 {
     use RefreshDatabase;

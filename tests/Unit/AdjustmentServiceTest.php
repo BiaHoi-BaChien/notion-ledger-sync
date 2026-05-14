@@ -6,6 +6,7 @@ use App\Services\Adjustment\AdjustmentResult;
 use App\Services\Adjustment\AdjustmentService;
 use App\Services\Notion\NotionClient;
 use Carbon\CarbonImmutable;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class AdjustmentServiceTest extends TestCase
@@ -106,9 +107,7 @@ class AdjustmentServiceTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider adjustmentTypeProvider
-     */
+    #[DataProvider('adjustmentTypeProvider')]
     public function test_register_adjustment_creates_page_with_correct_payload(float $adjustment, string $expectedType): void
     {
         $notion = $this->createMock(NotionClient::class);

@@ -5,11 +5,11 @@
     "keywords": ["laravel", "notion"],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.5",
         "guzzlehttp/guzzle": "^7.8",
-        "laravel/framework": "^11.0",
+        "laravel/framework": "13.9.*",
         "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.9",
+        "laravel/tinker": "^3.0",
         "nesbot/carbon": "^3.0"
     },
     "require-dev": {
@@ -17,12 +17,15 @@
         "laravel/pint": "^1.13",
         "laravel/sail": "^1.27",
         "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "8.1.1",
-        "phpunit/phpunit": "^10.5"
+        "nunomaduro/collision": "^8.9.4",
+        "phpunit/phpunit": "^12.0"
     },
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
+        "platform": {
+            "php": "8.5.0"
+        },
         "sort-packages": true,
         "allow-plugins": {
             "laravel/pint": true,
