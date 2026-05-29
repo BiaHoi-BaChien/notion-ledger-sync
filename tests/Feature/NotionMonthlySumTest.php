@@ -193,7 +193,7 @@ class NotionMonthlySumTest extends TestCase
             $sentMail = $mail;
 
             $body = $mail->render();
-            $this->assertStringContainsString('実行時刻: 2025-11-30 09:00:00 JST', $body);
+            $this->assertStringContainsString('実行時刻: 2025-11-30 09:00:00 Asia/Tokyo', $body);
             $this->assertStringNotContainsString('件数:', $body);
             $this->assertStringContainsString(sprintf('%s: 800', $this->targetAccount), $body);
             $this->assertStringContainsString("定期預金: 1,700", $body);
@@ -293,6 +293,32 @@ class NotionMonthlySumTest extends TestCase
                 $this->fail('Unexpected account in carry-over payload.');
             }
         }
+    }
+
+    public function test_monthly_sum_mail_displays_ho_chi_minh_timezone_identifier(): void
+    {
+        Config::set('app.timezone', 'Asia/Ho_Chi_Minh');
+
+        $mail = new MonthlySumReport([
+            'year_month' => '2026-04',
+            'range' => [
+                'start' => '2026-03-31T17:00:00+00:00',
+                'end' => '2026-04-30T17:00:00+00:00',
+            ],
+            'totals' => [
+                $this->targetAccount => 124724771,
+                '定期預金' => 1163952068,
+            ],
+            'carry_over_status' => [
+                ['account' => $this->targetAccount, 'status' => 'success'],
+                ['account' => '定期預金', 'status' => 'success'],
+            ],
+        ], Carbon::parse('2026-05-01T00:00:12Z'), 7375.58);
+
+        $body = $mail->render();
+
+        $this->assertStringContainsString('実行時刻: 2026-05-01 07:00:12 Asia/Ho_Chi_Minh', $body);
+        $this->assertStringNotContainsString('実行時刻: 2026-05-01 07:00:12 +07', $body);
     }
 
     public function test_monthly_sum_records_carry_over_failures(): void
