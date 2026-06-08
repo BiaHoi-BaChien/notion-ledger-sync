@@ -141,3 +141,35 @@ jobs:
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
+
+            APP_URL="$(php -r '$env = parse_ini_file(".env"); echo rtrim($env["APP_URL"] ?? "", "/");')"
+            if [ -n "$APP_URL" ]; then
+              RESET_FILE="opcache-reset-$(date +%s)-$(openssl rand -hex 8).php"
+              RESET_TOKEN="$(openssl rand -hex 32)"
+              trap 'rm -f "$RESET_FILE"' EXIT
+
+              cat > "$RESET_FILE" <<PHP
+            <?php
+
+            \$expected = '$RESET_TOKEN';
+            \$actual = \$_GET['token'] ?? '';
+
+            if (! hash_equals(\$expected, \$actual)) {
+                http_response_code(404);
+                exit;
+            }
+
+            if (function_exists('opcache_reset')) {
+                opcache_reset();
+            }
+
+            @unlink(__FILE__);
+            echo 'ok';
+            PHP
+
+              curl --fail --silent --show-error "$APP_URL/$RESET_FILE?token=$RESET_TOKEN"
+              rm -f "$RESET_FILE"
+              trap - EXIT
+            else
+              echo "APP_URL is not configured; skipping web OPcache reset."
+            fi
