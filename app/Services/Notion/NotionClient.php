@@ -9,12 +9,14 @@ use RuntimeException;
 
 class NotionClient
 {
+    private array $resolvedDataSourceIds = [];
+
     public function queryByDateRange(CarbonInterface $start, CarbonInterface $end): array
     {
         $dataSourceId = config('services.notion.data_source_id');
         $databaseId = config('services.notion.database_id');
         $token = config('services.notion.token');
-        $version = config('services.notion.version', '2025-09-03');
+        $version = config('services.notion.version', '2026-03-11');
 
         if (blank($token)) {
             throw new RuntimeException('Notion API credentials are not configured.');
@@ -86,7 +88,7 @@ class NotionClient
         $dataSourceId = config('services.notion.data_source_id');
         $databaseId = config('services.notion.database_id');
         $token = config('services.notion.token');
-        $version = config('services.notion.version', '2025-09-03');
+        $version = config('services.notion.version', '2026-03-11');
 
         if (blank($token)) {
             throw new RuntimeException('Notion API credentials are not configured.');
@@ -135,16 +137,13 @@ class NotionClient
 
     public function createCarryOverPage(string $account, float $amount, string $date): void
     {
+        $dataSourceId = config('services.notion.data_source_id');
         $databaseId = config('services.notion.database_id');
         $token = config('services.notion.token');
-        $version = config('services.notion.version', '2025-09-03');
+        $version = config('services.notion.version', '2026-03-11');
 
         if (blank($token)) {
             throw new RuntimeException('Notion API credentials are not configured.');
-        }
-
-        if (blank($databaseId)) {
-            throw new RuntimeException('Notion database ID is not configured.');
         }
 
         $headers = [
@@ -154,10 +153,7 @@ class NotionClient
         ];
 
         $payload = [
-            'parent' => [
-                'type' => 'database_id',
-                'database_id' => $databaseId,
-            ],
+            'parent' => $this->pageParent($dataSourceId, $databaseId, $token, $version),
             'properties' => [
                 '日付' => [
                     'date' => [
@@ -199,16 +195,13 @@ class NotionClient
         float $amount,
         string $account
     ): void {
+        $dataSourceId = config('services.notion.data_source_id');
         $databaseId = config('services.notion.database_id');
         $token = config('services.notion.token');
-        $version = config('services.notion.version', '2025-09-03');
+        $version = config('services.notion.version', '2026-03-11');
 
         if (blank($token)) {
             throw new RuntimeException('Notion API credentials are not configured.');
-        }
-
-        if (blank($databaseId)) {
-            throw new RuntimeException('Notion database ID is not configured.');
         }
 
         $headers = [
@@ -218,10 +211,7 @@ class NotionClient
         ];
 
         $payload = [
-            'parent' => [
-                'type' => 'database_id',
-                'database_id' => $databaseId,
-            ],
+            'parent' => $this->pageParent($dataSourceId, $databaseId, $token, $version),
             'properties' => [
                 '日付' => [
                     'date' => [
@@ -272,8 +262,35 @@ class NotionClient
         return null;
     }
 
+    private function pageParent(?string $dataSourceId, ?string $databaseId, string $token, string $version): array
+    {
+        if (filled($dataSourceId)) {
+            return [
+                'type' => 'data_source_id',
+                'data_source_id' => $dataSourceId,
+            ];
+        }
+
+        if (filled($databaseId)) {
+            $dataSourceId = $this->resolveDataSourceIdFromDatabase($databaseId, $token, $version);
+
+            return [
+                'type' => 'data_source_id',
+                'data_source_id' => $dataSourceId,
+            ];
+        }
+
+        throw new RuntimeException('Notion data source ID is not configured.');
+    }
+
     private function resolveDataSourceIdFromDatabase(string $databaseId, string $token, string $version): string
     {
+        $cacheKey = $version.':'.$databaseId;
+
+        if (isset($this->resolvedDataSourceIds[$cacheKey])) {
+            return $this->resolvedDataSourceIds[$cacheKey];
+        }
+
         $headers = [
             'Authorization' => 'Bearer '.$token,
             'Notion-Version' => $version,
@@ -292,6 +309,6 @@ class NotionClient
             throw new RuntimeException('Unable to resolve Notion data source ID from database.');
         }
 
-        return $dataSourceId;
+        return $this->resolvedDataSourceIds[$cacheKey] = $dataSourceId;
     }
 }
