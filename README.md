@@ -125,6 +125,25 @@ APP_TIMEZONE=Asia/Saigon
 
 旧運用で使っていた `APP_URL_PREFIX=api/notion_webform` は設定しません。パスキーの RP ID は未指定で `clb-biahoi.net` が使われます。明示する場合は `LEDGER_PASSKEY_RP_ID=clb-biahoi.net` を設定してください。
 
+GitHub Actions で自動デプロイする場合は、以下の repository secrets を設定してください。
+
+| Secret | 説明 |
+| --- | --- |
+| `HOSTINGER_HOST` | Hostinger の SSH ホスト名。 |
+| `HOSTINGER_PORT` | Hostinger の SSH ポート。 |
+| `HOSTINGER_USER` | Hostinger の SSH ユーザー名。 |
+| `HOSTINGER_SSH_KEY` | Hostinger に登録済み公開鍵と対になる秘密鍵。 |
+| `HOSTINGER_DEPLOY_PATH` | デプロイ先。例: `/home/u685478147/public_html/public_html/notion_ledger_sync` |
+| `HOSTINGER_ENV_BASE64` | 任意。サーバー上に `.env` がない場合に復元する `.env` の base64 文字列。 |
+
+`HOSTINGER_ENV_BASE64` は PowerShell で以下のように作成できます。
+
+```powershell
+[Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((Get-Content -Raw .env)))
+```
+
+サーバー上の deploy path に `.env` が既にある場合、workflow は既存の `.env` を優先し、`HOSTINGER_ENV_BASE64` では上書きしません。
+
 月次集計 Webhook の本番 URL は以下です。
 
 ```text
