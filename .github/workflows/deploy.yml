@@ -1,0 +1,86 @@
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: hostinger-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy production
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare deploy bundle
+        run: |
+          mkdir -p .deploy
+          rsync -a --delete \
+            --exclude='.deploy' \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.env' \
+            --exclude='node_modules' \
+            --exclude='vendor' \
+            --exclude='storage/app/*' \
+            --exclude='storage/framework/cache/*' \
+            --exclude='storage/framework/sessions/*' \
+            --exclude='storage/framework/testing/*' \
+            --exclude='storage/framework/views/*' \
+            --exclude='storage/logs/*' \
+            ./ .deploy/
+
+      - name: Upload files
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          source: ".deploy/*"
+          target: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
+          strip_components: 1
+          overwrite: true
+
+      - name: Run Laravel deploy commands
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          username: ${{ secrets.HOSTINGER_USER }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.HOSTINGER_DEPLOY_PATH }}"
+
+            if [ ! -f .env ]; then
+              echo ".env is missing on the server. Create it before deploying."
+              exit 1
+            fi
+
+            mkdir -p \
+              storage/app \
+              storage/framework/cache \
+              storage/framework/sessions \
+              storage/framework/testing \
+              storage/framework/views \
+              storage/logs \
+              bootstrap/cache \
+              database
+
+            if [ ! -f database/database.sqlite ]; then
+              touch database/database.sqlite
+            fi
+
+            composer install --no-dev --optimize-autoloader --no-interaction
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
