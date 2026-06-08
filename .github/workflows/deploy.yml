@@ -37,6 +37,54 @@ jobs:
             --exclude='storage/logs/*' \
             ./ .deploy/
 
+          cp -a public/. .deploy/
+
+          cat > .deploy/index.php <<'PHP'
+          <?php
+
+          use Illuminate\Contracts\Http\Kernel;
+          use Illuminate\Http\Request;
+
+          define('LARAVEL_START', microtime(true));
+
+          require __DIR__.'/vendor/autoload.php';
+
+          $app = require_once __DIR__.'/bootstrap/app.php';
+          $app->usePublicPath(__DIR__);
+
+          $kernel = $app->make(Kernel::class);
+
+          $response = $kernel->handle(
+              $request = Request::capture()
+          )->send();
+
+          $kernel->terminate($request, $response);
+          PHP
+
+          cat > .deploy/.htaccess <<'HTACCESS'
+          DirectoryIndex index.php
+
+          <FilesMatch "(^\.|\.env$|composer\.(json|lock)$|phpunit\.xml$)">
+              Require all denied
+          </FilesMatch>
+
+          <IfModule mod_rewrite.c>
+              <IfModule mod_negotiation.c>
+                  Options -MultiViews -Indexes
+              </IfModule>
+
+              RewriteEngine On
+
+              RewriteRule (^|/)\. - [F,L]
+              RewriteRule ^(?:app|bootstrap|config|database|public|resources|routes|storage|tests|vendor)(?:/|$) - [F,L,NC]
+              RewriteRule ^(?:artisan|composer\.(?:json|lock)|package(?:-lock)?\.json|phpunit\.xml|README\.md|vite\.config\.js)$ - [F,L,NC]
+
+              RewriteCond %{REQUEST_FILENAME} !-d
+              RewriteCond %{REQUEST_FILENAME} !-f
+              RewriteRule ^ index.php [L]
+          </IfModule>
+          HTACCESS
+
       - name: Upload files
         uses: appleboy/scp-action@v1
         with:
@@ -44,7 +92,7 @@ jobs:
           port: ${{ secrets.HOSTINGER_PORT }}
           username: ${{ secrets.HOSTINGER_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          source: ".deploy/*"
+          source: ".deploy/*,.deploy/.htaccess"
           target: ${{ secrets.HOSTINGER_DEPLOY_PATH }}
           strip_components: 1
           overwrite: true
