@@ -164,11 +164,11 @@ return [
         }
 
         return [
-            'rp_id' => env('LEDGER_PASSKEY_RP_ID', $host),
-            'rp_name' => env('LEDGER_PASSKEY_RP_NAME', env('APP_NAME', 'Ledger Form')), 
-            'user_name' => env('LEDGER_PASSKEY_USER_NAME', 'ledger-form'),
-            'user_display_name' => env('LEDGER_PASSKEY_USER_DISPLAY_NAME', 'Ledger Form Operator'),
-            'user_handle' => env('LEDGER_PASSKEY_USER_HANDLE', 'ledger-form-user'),
+            'rp_id' => env('LEDGER_PASSKEY_RP_ID') ?: $host,
+            'rp_name' => env('LEDGER_PASSKEY_RP_NAME') ?: env('APP_NAME', 'Ledger Form'),
+            'user_name' => env('LEDGER_PASSKEY_USER_NAME') ?: 'ledger-form',
+            'user_display_name' => env('LEDGER_PASSKEY_USER_DISPLAY_NAME') ?: 'Ledger Form Operator',
+            'user_handle' => env('LEDGER_PASSKEY_USER_HANDLE') ?: 'ledger-form-user',
         ];
     })(),
 ];

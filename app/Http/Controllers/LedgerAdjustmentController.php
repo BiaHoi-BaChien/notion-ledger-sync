@@ -14,7 +14,7 @@ class LedgerAdjustmentController extends Controller
     {
     }
 
-    public function show(): View
+    public function show(Request $request): View
     {
         return view('ledger.adjustment', [
             'inputs' => [
@@ -23,7 +23,7 @@ class LedgerAdjustmentController extends Controller
             ],
             'result' => null,
             'status' => null,
-            'passkey' => $this->getPasskeyConfig(),
+            'passkey' => $this->getPasskeyConfig($request),
             'passkeyRoutes' => $this->getPasskeyRoutes(),
         ]);
     }
@@ -38,7 +38,7 @@ class LedgerAdjustmentController extends Controller
             'inputs' => $inputs,
             'result' => $result,
             'status' => null,
-            'passkey' => $this->getPasskeyConfig(),
+            'passkey' => $this->getPasskeyConfig($request),
             'passkeyRoutes' => $this->getPasskeyRoutes(),
         ]);
     }
@@ -69,7 +69,7 @@ class LedgerAdjustmentController extends Controller
             'inputs' => $inputs,
             'result' => $result,
             'status' => $status,
-            'passkey' => $this->getPasskeyConfig(),
+            'passkey' => $this->getPasskeyConfig($request),
             'passkeyRoutes' => $this->getPasskeyRoutes(),
         ]);
     }
@@ -93,9 +93,9 @@ class LedgerAdjustmentController extends Controller
     /**
      * @return array{rp_id:string,rp_name:string,user_name:string,user_display_name:string,user_handle:string}
      */
-    private function getPasskeyConfig(): array
+    private function getPasskeyConfig(Request $request): array
     {
-        return PasskeyConfig::resolve();
+        return PasskeyConfig::resolve($request);
     }
 
     /**

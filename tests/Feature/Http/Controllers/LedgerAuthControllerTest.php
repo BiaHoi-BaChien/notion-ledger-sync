@@ -178,6 +178,57 @@ class LedgerAuthControllerTest extends TestCase
             ]);
     }
 
+    public function testPasskeyOptionsUseRequestHostWhenConfiguredRpIdIsBlankAndAppUrlIsLocalhost(): void
+    {
+        config([
+            'app.name' => 'Ledger Form',
+            'app.url' => 'http://localhost',
+            'services.ledger_passkey' => [
+                'rp_id' => '',
+                'rp_name' => '',
+                'user_name' => 'ledger-form',
+                'user_display_name' => 'Ledger Form Operator',
+                'user_handle' => 'ledger-form-user',
+            ],
+        ]);
+
+        $registrationOptions = $this
+            ->withSession(['ledger_authenticated' => true])
+            ->postJson('https://ledger.example.test/webauthn/register/options');
+
+        $registrationOptions
+            ->assertOk()
+            ->assertJsonPath('rp.id', 'ledger.example.test')
+            ->assertJsonPath('rp.name', 'Ledger Form');
+
+        $authenticationOptions = $this
+            ->postJson('https://ledger.example.test/webauthn/authenticate/options');
+
+        $authenticationOptions
+            ->assertOk()
+            ->assertJsonPath('rpId', 'ledger.example.test');
+    }
+
+    public function testPasskeyOptionsKeepExplicitRpIdForSubdomains(): void
+    {
+        config([
+            'app.url' => 'https://ledger.clb-biahoi.net',
+            'services.ledger_passkey' => [
+                'rp_id' => 'clb-biahoi.net',
+                'rp_name' => 'Ledger Form',
+                'user_name' => 'ledger-form',
+                'user_display_name' => 'Ledger Form Operator',
+                'user_handle' => 'ledger-form-user',
+            ],
+        ]);
+
+        $this
+            ->withSession(['ledger_authenticated' => true])
+            ->postJson('https://ledger.clb-biahoi.net/webauthn/register/options')
+            ->assertOk()
+            ->assertJsonPath('rp.id', 'clb-biahoi.net');
+    }
+
     public function testFinishAuthenticationReturns422WhenSignatureValidationFails(): void
     {
         $appUrl = rtrim(config('app.url', 'http://localhost'), '/');
