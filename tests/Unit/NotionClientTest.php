@@ -45,9 +45,10 @@ class NotionClientTest extends TestCase
         );
     }
 
-    public function test_create_adjustment_page_requires_database_id(): void
+    public function test_create_adjustment_page_requires_data_source_or_database_id(): void
     {
         Config::set('services.notion.token', 'token');
+        Config::set('services.notion.data_source_id', null);
         Config::set('services.notion.database_id', null);
 
         Http::fake();
@@ -55,7 +56,7 @@ class NotionClientTest extends TestCase
         $client = new NotionClient();
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Notion database ID is not configured.');
+        $this->expectExceptionMessage('Notion data source ID is not configured.');
 
         $client->createAdjustmentPage(
             '2024-04-01T00:00:00Z',
@@ -65,5 +66,34 @@ class NotionClientTest extends TestCase
             1000,
             '現金/普通預金'
         );
+    }
+
+    public function test_create_adjustment_page_uses_data_source_parent(): void
+    {
+        Config::set('services.notion.token', 'token');
+        Config::set('services.notion.data_source_id', 'ds1');
+        Config::set('services.notion.database_id', null);
+        Config::set('services.notion.version', '2026-03-11');
+
+        Http::fake([
+            'https://api.notion.com/v1/pages' => Http::response(['object' => 'page'], 200),
+        ]);
+
+        $client = new NotionClient();
+
+        $client->createAdjustmentPage(
+            '2024-04-01T00:00:00Z',
+            '支出',
+            '調整',
+            '調整額',
+            1000,
+            '現金/普通預金'
+        );
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://api.notion.com/v1/pages'
+                && $request['parent']['type'] === 'data_source_id'
+                && $request['parent']['data_source_id'] === 'ds1';
+        });
     }
 }

@@ -27,7 +27,7 @@ class NotionMonthlySumTest extends TestCase
         Config::set('services.notion.token', 'test-token');
         Config::set('services.notion.data_source_id', 'ds123');
         Config::set('services.notion.database_id', 'carryover-db');
-        Config::set('services.notion.version', '2025-09-03');
+        Config::set('services.notion.version', '2026-03-11');
         Config::set('services.webhook.token', 'hook-token');
         Config::set('services.monthly_sum.skip_if_carry_over_exists', false);
     }
@@ -253,7 +253,7 @@ class NotionMonthlySumTest extends TestCase
 
             $version = Arr::first($request->header('Notion-Version'));
 
-            return $version === '2025-09-03'
+            return $version === '2026-03-11'
                 && str_contains($request->url(), '/data_sources/ds123/');
         });
 
@@ -276,7 +276,8 @@ class NotionMonthlySumTest extends TestCase
         foreach ($carryOverRequests as $request) {
             $payload = $request->data();
 
-            $this->assertSame('carryover-db', Arr::get($payload, 'parent.database_id'));
+            $this->assertSame('data_source_id', Arr::get($payload, 'parent.type'));
+            $this->assertSame('ds123', Arr::get($payload, 'parent.data_source_id'));
             $this->assertSame('繰越', Arr::get($payload, 'properties.摘要.title.0.text.content'));
             $this->assertSame('繰越', Arr::get($payload, 'properties.種類.select.name'));
             $this->assertSame('繰越', Arr::get($payload, 'properties.カテゴリー.select.name'));
@@ -710,7 +711,8 @@ class NotionMonthlySumTest extends TestCase
         foreach ($carryOverRequests as $request) {
             $payload = $request->data();
 
-            $this->assertSame('carryover-db', Arr::get($payload, 'parent.database_id'));
+            $this->assertSame('data_source_id', Arr::get($payload, 'parent.type'));
+            $this->assertSame('ds123', Arr::get($payload, 'parent.data_source_id'));
             $this->assertSame('繰越', Arr::get($payload, 'properties.摘要.title.0.text.content'));
             $this->assertSame('繰越', Arr::get($payload, 'properties.種類.select.name'));
             $this->assertSame('繰越', Arr::get($payload, 'properties.カテゴリー.select.name'));
