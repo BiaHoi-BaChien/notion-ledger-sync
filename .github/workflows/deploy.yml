@@ -51,18 +51,26 @@ jobs:
 
       - name: Run Laravel deploy commands
         uses: appleboy/ssh-action@v1
+        env:
+          HOSTINGER_ENV_BASE64: ${{ secrets.HOSTINGER_ENV_BASE64 }}
         with:
           host: ${{ secrets.HOSTINGER_HOST }}
           port: ${{ secrets.HOSTINGER_PORT }}
           username: ${{ secrets.HOSTINGER_USER }}
           key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          envs: HOSTINGER_ENV_BASE64
           script: |
             set -e
             cd "${{ secrets.HOSTINGER_DEPLOY_PATH }}"
 
             if [ ! -f .env ]; then
-              echo ".env is missing on the server. Create it before deploying."
-              exit 1
+              if [ -z "${HOSTINGER_ENV_BASE64:-}" ]; then
+                echo ".env is missing on the server. Create it or set HOSTINGER_ENV_BASE64."
+                exit 1
+              fi
+
+              printf '%s' "$HOSTINGER_ENV_BASE64" | base64 -d > .env
+              chmod 600 .env
             fi
 
             mkdir -p \
