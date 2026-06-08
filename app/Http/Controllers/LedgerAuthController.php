@@ -393,7 +393,7 @@ class LedgerAuthController extends Controller
         $appUrl = config('app.url');
 
         if (is_string($appUrl) && $appUrl !== '') {
-            return rtrim($appUrl, '/');
+            return $this->resolveOriginFromUrl($appUrl);
         }
 
         $schemeAndHost = $request->getSchemeAndHttpHost();
@@ -403,6 +403,25 @@ class LedgerAuthController extends Controller
         }
 
         return rtrim($schemeAndHost, '/');
+    }
+
+    private function resolveOriginFromUrl(string $url): string
+    {
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+        $host = parse_url($url, PHP_URL_HOST);
+        $port = parse_url($url, PHP_URL_PORT);
+
+        if (! is_string($scheme) || $scheme === '' || ! is_string($host) || $host === '') {
+            return rtrim($url, '/');
+        }
+
+        $origin = $scheme.'://'.$host;
+
+        if (is_int($port)) {
+            $origin .= ':'.$port;
+        }
+
+        return $origin;
     }
 
     private function logDebug(string $message, array $context = []): void

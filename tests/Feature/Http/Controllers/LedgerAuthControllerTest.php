@@ -103,6 +103,81 @@ class LedgerAuthControllerTest extends TestCase
         $this->assertEquals($now, $credential->last_used_at);
     }
 
+    public function testFinishAuthenticationAcceptsAppUrlWithSubdirectoryWhenOriginHeaderIsMissing(): void
+    {
+        $appUrl = 'https://clb-biahoi.net/notion_ledger_sync';
+        $rpId = 'clb-biahoi.net';
+        $origin = 'https://clb-biahoi.net';
+
+        config([
+            'services.ledger_passkey' => [
+                'rp_id' => $rpId,
+                'rp_name' => 'Ledger Form',
+                'user_name' => 'ledger-form',
+                'user_display_name' => 'Ledger Form Operator',
+                'user_handle' => 'ledger-form-user',
+            ],
+            'app.url' => $appUrl,
+        ]);
+
+        $keyPair = sodium_crypto_sign_keypair();
+        $publicKey = sodium_crypto_sign_publickey($keyPair);
+        $secretKey = sodium_crypto_sign_secretkey($keyPair);
+
+        $publicKeyDer = $this->ed25519PublicKeyToDer($publicKey);
+
+        LedgerCredential::factory()->create([
+            'user_handle' => 'ledger-form-user',
+            'credential_id' => 'credential-subdirectory',
+            'public_key' => base64_encode($publicKeyDer),
+            'public_key_algorithm' => -8,
+            'sign_count' => 1,
+        ]);
+
+        $challengeBytes = random_bytes(32);
+        $challenge = $this->encodeBase64Url($challengeBytes);
+
+        $clientData = [
+            'type' => 'webauthn.get',
+            'challenge' => $this->encodeBase64Url($challengeBytes),
+            'origin' => $origin,
+            'crossOrigin' => false,
+        ];
+        $clientDataJson = json_encode($clientData, JSON_UNESCAPED_SLASHES);
+        $clientDataEncoded = $this->encodeBase64Url($clientDataJson);
+
+        $signCount = 2;
+        $authenticatorData = hash('sha256', $rpId, true) . chr(0x01) . pack('N', $signCount);
+        $authenticatorDataEncoded = $this->encodeBase64Url($authenticatorData);
+
+        $clientDataHash = hash('sha256', $clientDataJson, true);
+        $signature = sodium_crypto_sign_detached($authenticatorData . $clientDataHash, $secretKey);
+
+        $response = $this
+            ->withSession([
+                'webauthn.authentication.challenge' => $challenge,
+            ])
+            ->postJson(route('ledger.passkey.login.verify'), [
+                'id' => 'credential-subdirectory',
+                'rawId' => 'credential-subdirectory',
+                'type' => 'public-key',
+                'challenge' => $challenge,
+                'signCount' => $signCount,
+                'response' => [
+                    'clientDataJSON' => $clientDataEncoded,
+                    'authenticatorData' => $authenticatorDataEncoded,
+                    'signature' => $this->encodeBase64Url($signature),
+                    'userHandle' => $this->encodeBase64Url('ledger-form-user'),
+                ],
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJson([
+                'redirect' => route('adjustment.form'),
+            ]);
+    }
+
     public function testFinishAuthenticationReturns422WhenSignatureValidationFails(): void
     {
         $appUrl = rtrim(config('app.url', 'http://localhost'), '/');
