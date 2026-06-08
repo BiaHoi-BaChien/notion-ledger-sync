@@ -28,7 +28,7 @@ class LedgerAuthController extends Controller
         }
 
         return view('auth.ledger-login', [
-            'passkey' => $this->getPasskeyConfig(),
+            'passkey' => $this->getPasskeyConfig($request),
             'routes' => [
                 'register_options' => route('ledger.passkey.register.options'),
                 'register' => route('ledger.passkey.register.store'),
@@ -77,7 +77,7 @@ class LedgerAuthController extends Controller
             abort(403, 'パスキーを登録するには先にログインしてください。');
         }
 
-        $config = $this->getPasskeyConfig();
+        $config = $this->getPasskeyConfig($request);
 
         $challenge = $this->encodeBase64Url(random_bytes(32));
         $request->session()->put('webauthn.registration.challenge', $challenge);
@@ -120,7 +120,7 @@ class LedgerAuthController extends Controller
             abort(403, 'パスキーを登録するには先にログインしてください。');
         }
 
-        $config = $this->getPasskeyConfig();
+        $config = $this->getPasskeyConfig($request);
 
         $validated = $request->validate([
             'id' => ['required', 'string'],
@@ -176,7 +176,7 @@ class LedgerAuthController extends Controller
 
     public function beginAuthentication(Request $request): JsonResponse
     {
-        $config = $this->getPasskeyConfig();
+        $config = $this->getPasskeyConfig($request);
 
         $challenge = $this->encodeBase64Url(random_bytes(32));
         $request->session()->put('webauthn.authentication.challenge', $challenge);
@@ -204,7 +204,7 @@ class LedgerAuthController extends Controller
 
     public function finishAuthentication(Request $request): JsonResponse
     {
-        $config = $this->getPasskeyConfig();
+        $config = $this->getPasskeyConfig($request);
 
         try {
             $validated = $request->validate([
@@ -346,9 +346,9 @@ class LedgerAuthController extends Controller
     /**
      * @return array{rp_id:string,rp_name:string,user_name:string,user_display_name:string,user_handle:string}
      */
-    private function getPasskeyConfig(): array
+    private function getPasskeyConfig(Request $request): array
     {
-        return PasskeyConfig::resolve();
+        return PasskeyConfig::resolve($request);
     }
 
     private function isCredentialLoginEnabled(): bool
