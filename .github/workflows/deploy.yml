@@ -142,7 +142,8 @@ jobs:
             php artisan route:cache
             php artisan view:cache
 
-            APP_URL="$(php -r '$env = parse_ini_file(".env"); echo rtrim($env["APP_URL"] ?? "", "/");')"
+            APP_URL="$(php -r '$url = ""; foreach (file(".env", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) { if (preg_match("/^APP_URL=(.*)$/", $line, $matches)) { $url = trim($matches[1], " \t\n\r\0\x0B\"'"'"'"); break; } } echo rtrim($url, "/");')"
+            APP_URL="${APP_URL:-https://clb-biahoi.net/notion_ledger_sync}"
             if [ -n "$APP_URL" ]; then
               RESET_FILE="opcache-reset-$(date +%s)-$(openssl rand -hex 8).php"
               RESET_TOKEN="$(openssl rand -hex 32)"
