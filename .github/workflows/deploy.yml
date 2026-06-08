@@ -168,7 +168,7 @@ jobs:
             echo 'ok';
             PHP
 
-              curl --fail --silent --show-error "$APP_URL/$RESET_FILE?token=$RESET_TOKEN"
+              curl --fail --location --max-redirs 5 --silent --show-error "$APP_URL/$RESET_FILE?token=$RESET_TOKEN"
               rm -f "$RESET_FILE"
               trap - EXIT
             else
