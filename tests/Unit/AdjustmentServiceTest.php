@@ -53,16 +53,17 @@ class AdjustmentServiceTest extends TestCase
 
         $service = new AdjustmentService($notion);
 
-        $result = $service->calculate(1200.0, 300.0);
+        $result = $service->calculate(200.0, 1200.0, 300.0);
 
         $this->assertInstanceOf(AdjustmentResult::class, $result);
         $this->assertTrue($result->calculatedAt->equalTo(CarbonImmutable::parse('2024-05-15 10:30:00', 'Asia/Tokyo')));
         $this->assertTrue($result->targetMonthStart->equalTo($expectedStart));
+        $this->assertSame(200.0, $result->salaryAmount);
         $this->assertSame(1200.0, $result->bankBalance);
         $this->assertSame(300.0, $result->cashOnHand);
         $this->assertSame(1500.0, $result->physicalTotal);
         $this->assertSame(74.5, $result->notionTotal);
-        $this->assertSame(1425.5, $result->adjustmentAmount);
+        $this->assertSame(1225.5, $result->adjustmentAmount);
         $this->assertSame($this->targetAccount, $result->accountName);
         $this->assertSame([], $result->missingCarryOverAccounts);
     }
@@ -91,7 +92,7 @@ class AdjustmentServiceTest extends TestCase
 
         $service = new AdjustmentService($notion);
 
-        $result = $service->calculate(1200.0, 300.0);
+        $result = $service->calculate(0.0, 1200.0, 300.0);
 
         $this->assertSame([$this->targetAccount, '定期預金'], $result->missingCarryOverAccounts);
     }
@@ -115,6 +116,7 @@ class AdjustmentServiceTest extends TestCase
         $result = new AdjustmentResult(
             CarbonImmutable::parse('2024-05-31 18:00:00', 'Asia/Tokyo'),
             CarbonImmutable::parse('2024-05-01 00:00:00', 'Asia/Tokyo'),
+            0.0,
             1200.0,
             300.0,
             1500.0,
@@ -125,7 +127,7 @@ class AdjustmentServiceTest extends TestCase
         );
 
         $notion->expects($this->once())
-            ->method('createAdjustmentPage')
+            ->method('createLedgerPage')
             ->with(
                 '2024-05-31T18:00:00+09:00',
                 $expectedType,
@@ -137,5 +139,61 @@ class AdjustmentServiceTest extends TestCase
 
         $service = new AdjustmentService($notion);
         $service->registerAdjustment($result);
+    }
+
+    public function test_register_salary_creates_income_page_for_target_account(): void
+    {
+        $notion = $this->createMock(NotionClient::class);
+
+        $result = new AdjustmentResult(
+            CarbonImmutable::parse('2024-05-31 18:00:00', 'Asia/Tokyo'),
+            CarbonImmutable::parse('2024-05-01 00:00:00', 'Asia/Tokyo'),
+            250000.0,
+            1200.0,
+            300.0,
+            1500.0,
+            74.5,
+            0.0,
+            $this->targetAccount,
+            []
+        );
+
+        $notion->expects($this->once())
+            ->method('createLedgerPage')
+            ->with(
+                '2024-05-31T18:00:00+09:00',
+                '収入',
+                '給料',
+                '給料',
+                250000.0,
+                $this->targetAccount
+            );
+
+        $service = new AdjustmentService($notion);
+        $service->registerSalary($result);
+    }
+
+    public function test_register_salary_skips_zero_amount(): void
+    {
+        $notion = $this->createMock(NotionClient::class);
+
+        $result = new AdjustmentResult(
+            CarbonImmutable::parse('2024-05-31 18:00:00', 'Asia/Tokyo'),
+            CarbonImmutable::parse('2024-05-01 00:00:00', 'Asia/Tokyo'),
+            0.0,
+            1200.0,
+            300.0,
+            1500.0,
+            74.5,
+            0.0,
+            $this->targetAccount,
+            []
+        );
+
+        $notion->expects($this->never())
+            ->method('createLedgerPage');
+
+        $service = new AdjustmentService($notion);
+        $service->registerSalary($result);
     }
 }

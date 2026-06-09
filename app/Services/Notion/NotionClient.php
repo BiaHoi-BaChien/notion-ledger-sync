@@ -187,7 +187,7 @@ class NotionClient
             ->throw();
     }
 
-    public function createAdjustmentPage(
+    public function createLedgerPage(
         string $date,
         string $type,
         string $category,

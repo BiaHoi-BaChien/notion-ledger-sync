@@ -33,6 +33,7 @@ class LedgerAdjustmentControllerTest extends TestCase
         $response->assertOk();
         $response->assertViewIs('ledger.adjustment');
         $response->assertViewHas('inputs', [
+            'salary_amount' => null,
             'bank_balance' => null,
             'cash_on_hand' => null,
         ]);
@@ -55,11 +56,12 @@ class LedgerAdjustmentControllerTest extends TestCase
         $response->assertSessionHasErrors(['bank_balance', 'cash_on_hand']);
     }
 
-    public function test_register_shows_success_status_when_adjustment_created(): void
+    public function test_register_shows_success_status_when_salary_and_adjustment_created(): void
     {
         $result = new AdjustmentResult(
             CarbonImmutable::parse('2024-04-10T12:00:00Z'),
             CarbonImmutable::parse('2024-04-01T00:00:00Z'),
+            500.0,
             1200.0,
             800.0,
             2000.0,
@@ -72,8 +74,11 @@ class LedgerAdjustmentControllerTest extends TestCase
         $this->mock(AdjustmentService::class, function ($mock) use ($result): void {
             $mock->shouldReceive('calculate')
                 ->once()
-                ->with(1200.0, 800.0)
+                ->with(500.0, 1200.0, 800.0)
                 ->andReturn($result);
+            $mock->shouldReceive('registerSalary')
+                ->once()
+                ->with($result);
             $mock->shouldReceive('registerAdjustment')
                 ->once()
                 ->with($result);
@@ -81,6 +86,47 @@ class LedgerAdjustmentControllerTest extends TestCase
 
         $response = $this->withSession(['ledger_authenticated' => true])
             ->post('/register', [
+                'salary_amount' => 500,
+                'bank_balance' => 1200,
+                'cash_on_hand' => 800,
+            ]);
+
+        $response->assertOk();
+        $response->assertViewHas('status', [
+            'success' => true,
+            'message' => '家計簿に給与・調整額を登録しました。',
+        ]);
+    }
+
+    public function test_register_skips_salary_when_amount_is_zero(): void
+    {
+        $result = new AdjustmentResult(
+            CarbonImmutable::parse('2024-04-10T12:00:00Z'),
+            CarbonImmutable::parse('2024-04-01T00:00:00Z'),
+            0.0,
+            1200.0,
+            800.0,
+            2000.0,
+            500.0,
+            1500.0,
+            '現金/普通預金',
+            []
+        );
+
+        $this->mock(AdjustmentService::class, function ($mock) use ($result): void {
+            $mock->shouldReceive('calculate')
+                ->once()
+                ->with(0.0, 1200.0, 800.0)
+                ->andReturn($result);
+            $mock->shouldNotReceive('registerSalary');
+            $mock->shouldReceive('registerAdjustment')
+                ->once()
+                ->with($result);
+        });
+
+        $response = $this->withSession(['ledger_authenticated' => true])
+            ->post('/register', [
+                'salary_amount' => '',
                 'bank_balance' => 1200,
                 'cash_on_hand' => 800,
             ]);
@@ -97,6 +143,7 @@ class LedgerAdjustmentControllerTest extends TestCase
         $result = new AdjustmentResult(
             CarbonImmutable::parse('2024-04-10T12:00:00Z'),
             CarbonImmutable::parse('2024-04-01T00:00:00Z'),
+            0.0,
             1200.0,
             800.0,
             2000.0,
@@ -109,8 +156,9 @@ class LedgerAdjustmentControllerTest extends TestCase
         $this->mock(AdjustmentService::class, function ($mock) use ($result): void {
             $mock->shouldReceive('calculate')
                 ->once()
-                ->with(1200.0, 800.0)
+                ->with(0.0, 1200.0, 800.0)
                 ->andReturn($result);
+            $mock->shouldNotReceive('registerSalary');
             $mock->shouldReceive('registerAdjustment')
                 ->once()
                 ->with($result)
@@ -119,6 +167,7 @@ class LedgerAdjustmentControllerTest extends TestCase
 
         $response = $this->withSession(['ledger_authenticated' => true])
             ->post('/register', [
+                'salary_amount' => 0,
                 'bank_balance' => 1200,
                 'cash_on_hand' => 800,
             ]);

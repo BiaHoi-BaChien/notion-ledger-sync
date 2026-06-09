@@ -9,6 +9,7 @@ class AdjustmentResult
     public function __construct(
         public CarbonImmutable $calculatedAt,
         public CarbonImmutable $targetMonthStart,
+        public float $salaryAmount,
         public float $bankBalance,
         public float $cashOnHand,
         public float $physicalTotal,
@@ -28,6 +29,7 @@ class AdjustmentResult
         return [
             'calculated_at' => $this->calculatedAt->toIso8601String(),
             'target_month_start' => $this->targetMonthStart->toDateString(),
+            'salary_amount' => $this->salaryAmount,
             'bank_balance' => $this->bankBalance,
             'cash_on_hand' => $this->cashOnHand,
             'physical_total' => $this->physicalTotal,
