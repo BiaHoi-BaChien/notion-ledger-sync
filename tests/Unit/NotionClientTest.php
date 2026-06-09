@@ -45,7 +45,7 @@ class NotionClientTest extends TestCase
         );
     }
 
-    public function test_create_adjustment_page_requires_data_source_or_database_id(): void
+    public function test_create_ledger_page_requires_data_source_or_database_id(): void
     {
         Config::set('services.notion.token', 'token');
         Config::set('services.notion.data_source_id', null);
@@ -58,7 +58,7 @@ class NotionClientTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Notion data source ID is not configured.');
 
-        $client->createAdjustmentPage(
+        $client->createLedgerPage(
             '2024-04-01T00:00:00Z',
             '支出',
             '調整',
@@ -68,7 +68,7 @@ class NotionClientTest extends TestCase
         );
     }
 
-    public function test_create_adjustment_page_uses_data_source_parent(): void
+    public function test_create_ledger_page_uses_data_source_parent(): void
     {
         Config::set('services.notion.token', 'token');
         Config::set('services.notion.data_source_id', 'ds1');
@@ -81,7 +81,7 @@ class NotionClientTest extends TestCase
 
         $client = new NotionClient();
 
-        $client->createAdjustmentPage(
+        $client->createLedgerPage(
             '2024-04-01T00:00:00Z',
             '支出',
             '調整',

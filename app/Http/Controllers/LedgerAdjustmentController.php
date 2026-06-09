@@ -18,6 +18,7 @@ class LedgerAdjustmentController extends Controller
     {
         return view('ledger.adjustment', [
             'inputs' => [
+                'salary_amount' => null,
                 'bank_balance' => null,
                 'cash_on_hand' => null,
             ],
@@ -32,7 +33,11 @@ class LedgerAdjustmentController extends Controller
     {
         $inputs = $this->validateInputs($request);
 
-        $result = $this->service->calculate($inputs['bank_balance'], $inputs['cash_on_hand']);
+        $result = $this->service->calculate(
+            $inputs['salary_amount'],
+            $inputs['bank_balance'],
+            $inputs['cash_on_hand']
+        );
 
         return view('ledger.adjustment', [
             'inputs' => $inputs,
@@ -47,15 +52,32 @@ class LedgerAdjustmentController extends Controller
     {
         $inputs = $this->validateInputs($request);
 
-        $result = $this->service->calculate($inputs['bank_balance'], $inputs['cash_on_hand']);
+        $result = $this->service->calculate(
+            $inputs['salary_amount'],
+            $inputs['bank_balance'],
+            $inputs['cash_on_hand']
+        );
 
         $status = null;
 
         try {
-            $this->service->registerAdjustment($result);
+            $registered = [];
+
+            if ($result->salaryAmount > 0) {
+                $this->service->registerSalary($result);
+                $registered[] = '給与';
+            }
+
+            if (abs($result->adjustmentAmount) >= 0.00001) {
+                $this->service->registerAdjustment($result);
+                $registered[] = '調整額';
+            }
+
             $status = [
                 'success' => true,
-                'message' => '家計簿に調整額を登録しました。',
+                'message' => $registered === []
+                    ? '登録対象の給与・調整額はありません。'
+                    : '家計簿に'.implode('・', $registered).'を登録しました。',
             ];
         } catch (Throwable $e) {
             report($e);
@@ -75,16 +97,18 @@ class LedgerAdjustmentController extends Controller
     }
 
     /**
-     * @return array{bank_balance: float, cash_on_hand: float}
+     * @return array{salary_amount: float, bank_balance: float, cash_on_hand: float}
      */
     private function validateInputs(Request $request): array
     {
         $validated = $request->validate([
+            'salary_amount' => ['nullable', 'numeric', 'min:0'],
             'bank_balance' => ['required', 'numeric'],
             'cash_on_hand' => ['required', 'numeric'],
         ]);
 
         return [
+            'salary_amount' => (float) ($validated['salary_amount'] ?? 0),
             'bank_balance' => (float) $validated['bank_balance'],
             'cash_on_hand' => (float) $validated['cash_on_hand'],
         ];

@@ -15,7 +15,7 @@ class AdjustmentService
         $this->targetAccount = (string) config('services.adjustment.target_account', '現金/普通預金');
     }
 
-    public function calculate(float $bankBalance, float $cashOnHand): AdjustmentResult
+    public function calculate(float $salaryAmount, float $bankBalance, float $cashOnHand): AdjustmentResult
     {
         $now = CarbonImmutable::now(config('app.timezone'));
         $targetMonthStart = $now->startOfMonth()->startOfDay();
@@ -50,11 +50,12 @@ class AdjustmentService
         }
 
         $physicalTotal = $bankBalance + $cashOnHand;
-        $adjustmentAmount = $physicalTotal - $total;
+        $adjustmentAmount = $physicalTotal - $total - $salaryAmount;
 
         return new AdjustmentResult(
             $now,
             $targetMonthStart,
+            (float) $salaryAmount,
             (float) $bankBalance,
             (float) $cashOnHand,
             (float) $physicalTotal,
@@ -65,13 +66,29 @@ class AdjustmentService
         );
     }
 
+    public function registerSalary(AdjustmentResult $result): void
+    {
+        if ($result->salaryAmount <= 0) {
+            return;
+        }
+
+        $this->notion->createLedgerPage(
+            $result->calculatedAt->toIso8601String(),
+            '収入',
+            '給料',
+            '給料',
+            $result->salaryAmount,
+            $result->accountName
+        );
+    }
+
     public function registerAdjustment(AdjustmentResult $result): void
     {
         $type = $result->adjustmentAmount >= 0 ? '収入' : '支出';
         $amount = abs($result->adjustmentAmount);
         $date = $result->calculatedAt->toIso8601String();
 
-        $this->notion->createAdjustmentPage(
+        $this->notion->createLedgerPage(
             $date,
             $type,
             '調整',
