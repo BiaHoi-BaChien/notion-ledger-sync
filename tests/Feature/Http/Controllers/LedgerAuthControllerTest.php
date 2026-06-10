@@ -178,6 +178,81 @@ class LedgerAuthControllerTest extends TestCase
             ]);
     }
 
+    public function test_finish_authentication_rejects_untrusted_origin_header(): void
+    {
+        $appUrl = 'https://clb-biahoi.net/notion_ledger_sync';
+        $rpId = 'clb-biahoi.net';
+        $untrustedOrigin = 'https://attacker.clb-biahoi.net';
+
+        config([
+            'services.ledger_passkey' => [
+                'rp_id' => $rpId,
+                'rp_name' => 'Ledger Form',
+                'user_name' => 'ledger-form',
+                'user_display_name' => 'Ledger Form Operator',
+                'user_handle' => 'ledger-form-user',
+            ],
+            'app.url' => $appUrl,
+        ]);
+
+        $keyPair = sodium_crypto_sign_keypair();
+        $publicKey = sodium_crypto_sign_publickey($keyPair);
+        $secretKey = sodium_crypto_sign_secretkey($keyPair);
+
+        $credential = LedgerCredential::factory()->create([
+            'user_handle' => 'ledger-form-user',
+            'credential_id' => 'credential-untrusted-origin',
+            'public_key' => base64_encode($this->ed25519PublicKeyToDer($publicKey)),
+            'public_key_algorithm' => -8,
+            'sign_count' => 1,
+        ]);
+
+        $challengeBytes = random_bytes(32);
+        $challenge = $this->encodeBase64Url($challengeBytes);
+        $clientDataJson = json_encode([
+            'type' => 'webauthn.get',
+            'challenge' => $this->encodeBase64Url($challengeBytes),
+            'origin' => $untrustedOrigin,
+            'crossOrigin' => false,
+        ], JSON_UNESCAPED_SLASHES);
+        $authenticatorData = hash('sha256', $rpId, true) . chr(0x01) . pack('N', 2);
+        $signature = sodium_crypto_sign_detached(
+            $authenticatorData . hash('sha256', $clientDataJson, true),
+            $secretKey
+        );
+
+        $response = $this
+            ->withHeader('Origin', $untrustedOrigin)
+            ->withSession([
+                'webauthn.authentication.challenge' => $challenge,
+            ])
+            ->postJson(route('ledger.passkey.login.verify'), [
+                'id' => 'credential-untrusted-origin',
+                'rawId' => 'credential-untrusted-origin',
+                'type' => 'public-key',
+                'challenge' => $challenge,
+                'signCount' => 2,
+                'response' => [
+                    'clientDataJSON' => $this->encodeBase64Url($clientDataJson),
+                    'authenticatorData' => $this->encodeBase64Url($authenticatorData),
+                    'signature' => $this->encodeBase64Url($signature),
+                    'userHandle' => $this->encodeBase64Url('ledger-form-user'),
+                ],
+            ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJson([
+                'message' => 'オリジンが一致しません。',
+            ])
+            ->assertSessionMissing('ledger_authenticated');
+
+        $credential->refresh();
+
+        $this->assertSame(1, $credential->sign_count);
+        $this->assertNull($credential->last_used_at);
+    }
+
     public function testPasskeyOptionsUseRequestHostWhenConfiguredRpIdIsBlankAndAppUrlIsLocalhost(): void
     {
         config([
