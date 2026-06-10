@@ -384,12 +384,6 @@ class LedgerAuthController extends Controller
 
     private function resolveExpectedOrigin(Request $request): ?string
     {
-        $originHeader = $request->headers->get('origin');
-
-        if (is_string($originHeader) && $originHeader !== '') {
-            return rtrim($originHeader, '/');
-        }
-
         $appUrl = config('app.url');
 
         if (is_string($appUrl) && $appUrl !== '') {
