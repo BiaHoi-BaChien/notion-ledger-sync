@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\LedgerCredential;
 use App\Services\WebAuthn\AssertionValidator;
 use App\Services\WebAuthn\Exceptions\AssertionValidationException;
+use App\Services\WebAuthn\Exceptions\RegistrationValidationException;
+use App\Services\WebAuthn\RegistrationValidator;
 use App\Support\PasskeyConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
@@ -17,9 +19,10 @@ use Illuminate\View\View;
 
 class LedgerAuthController extends Controller
 {
-    public function __construct(private readonly AssertionValidator $assertionValidator)
-    {
-    }
+    public function __construct(
+        private readonly AssertionValidator $assertionValidator,
+        private readonly RegistrationValidator $registrationValidator,
+    ) {}
 
     public function show(Request $request): View|RedirectResponse
     {
@@ -107,6 +110,7 @@ class LedgerAuthController extends Controller
             'pubKeyCredParams' => [
                 ['type' => 'public-key', 'alg' => -7],
                 ['type' => 'public-key', 'alg' => -257],
+                ['type' => 'public-key', 'alg' => -8],
             ],
             'timeout' => 60000,
             'attestation' => 'none',
@@ -130,11 +134,15 @@ class LedgerAuthController extends Controller
             'response' => ['required', 'array'],
             'response.clientDataJSON' => ['required', 'string'],
             'response.attestationObject' => ['required', 'string'],
-            'response.publicKey' => ['required', 'string'],
-            'response.publicKeyAlgorithm' => ['required', 'integer'],
             'transports' => ['nullable', 'array'],
             'transports.*' => ['string'],
         ]);
+
+        if (! hash_equals($validated['id'], $validated['rawId'])) {
+            throw ValidationException::withMessages([
+                'id' => 'credential ID が一致しません。',
+            ]);
+        }
 
         $sessionChallenge = $request->session()->pull('webauthn.registration.challenge');
 
@@ -156,15 +164,34 @@ class LedgerAuthController extends Controller
             ]);
         }
 
+        try {
+            $registration = $this->registrationValidator->validate(
+                $validated['rawId'],
+                [
+                    'clientDataJSON' => $validated['response']['clientDataJSON'],
+                    'attestationObject' => $validated['response']['attestationObject'],
+                ],
+                [
+                    'challenge' => $sessionChallenge,
+                    'rp_id' => $config['rp_id'],
+                    'origin' => $this->resolveExpectedOrigin($request),
+                ]
+            );
+        } catch (RegistrationValidationException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
         $credential = new LedgerCredential([
             'user_handle' => $config['user_handle'],
-            'credential_id' => $validated['rawId'],
+            'credential_id' => $registration->credentialId,
             'type' => $validated['type'],
             'transports' => $validated['transports'] ?? null,
-            'attestation_type' => 'none',
-            'public_key' => $validated['response']['publicKey'],
-            'public_key_algorithm' => $validated['response']['publicKeyAlgorithm'],
-            'sign_count' => 0,
+            'attestation_type' => $registration->attestationType,
+            'public_key' => $registration->publicKey,
+            'public_key_algorithm' => $registration->publicKeyAlgorithm,
+            'sign_count' => $registration->signCount,
         ]);
 
         $credential->save();
@@ -212,7 +239,6 @@ class LedgerAuthController extends Controller
                 'rawId' => ['required', 'string'],
                 'type' => ['required', 'string', 'in:public-key'],
                 'challenge' => ['required', 'string'],
-                'signCount' => ['nullable', 'integer', 'min:0'],
                 'response' => ['required', 'array'],
                 'response.clientDataJSON' => ['required', 'string'],
                 'response.authenticatorData' => ['required', 'string'],
@@ -281,7 +307,7 @@ class LedgerAuthController extends Controller
         }
 
         try {
-            $this->assertionValidator->validate(
+            $assertion = $this->assertionValidator->validate(
                 $credential,
                 [
                     'clientDataJSON' => $validated['response']['clientDataJSON'],
@@ -305,20 +331,23 @@ class LedgerAuthController extends Controller
             ], 422);
         }
 
-        $newSignCount = $validated['signCount'] ?? null;
+        $newSignCount = $assertion->signCount;
 
-        if ($newSignCount !== null && $newSignCount < $credential->sign_count) {
-            $this->logDebug('Ledger passkey authentication failed: sign count decreased.', [
+        if ($credential->sign_count > 0
+            && $newSignCount > 0
+            && $newSignCount <= $credential->sign_count
+        ) {
+            $this->logDebug('Ledger passkey authentication failed: sign count did not increase.', [
                 'stored_sign_count' => $credential->sign_count,
-                'provided_sign_count' => $newSignCount,
+                'signed_sign_count' => $newSignCount,
             ]);
 
             throw ValidationException::withMessages([
-                'signCount' => 'サインカウントが逆行しています。',
+                'response.authenticatorData' => 'サインカウントが増加していません。credential が複製された可能性があります。',
             ]);
         }
 
-        $credential->sign_count = $newSignCount ?? ($credential->sign_count + 1);
+        $credential->sign_count = max($credential->sign_count, $newSignCount);
         $credential->last_used_at = CarbonImmutable::now();
         $credential->save();
 

@@ -4,6 +4,8 @@ namespace Tests\Unit;
 
 use App\Http\Controllers\LedgerAuthController;
 use App\Services\WebAuthn\AssertionValidator;
+use App\Services\WebAuthn\CborDecoder;
+use App\Services\WebAuthn\RegistrationValidator;
 use Illuminate\Http\Request;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -19,7 +21,10 @@ class LedgerAuthOriginTest extends TestCase
         $request = Request::create('https://attacker.clb-biahoi.net/webauthn/authenticate', 'POST');
         $request->headers->set('Origin', 'https://attacker.clb-biahoi.net');
 
-        $controller = new LedgerAuthController(new AssertionValidator);
+        $controller = new LedgerAuthController(
+            new AssertionValidator,
+            new RegistrationValidator(new CborDecoder),
+        );
         $method = new ReflectionMethod($controller, 'resolveExpectedOrigin');
 
         $this->assertSame('https://clb-biahoi.net', $method->invoke($controller, $request));

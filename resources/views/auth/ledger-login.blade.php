@@ -209,8 +209,6 @@
                 const publicKey = transformRequestOptions(options);
                 const assertion = await navigator.credentials.get({ publicKey });
 
-                const signCount = extractSignCount(assertion.response.authenticatorData);
-
                 const payload = {
                     id: assertion.id,
                     rawId: bufferToBase64Url(assertion.rawId),
@@ -225,7 +223,6 @@
                     },
                     clientExtensionResults: assertion.getClientExtensionResults?.() ?? {},
                     challenge: options.challenge,
-                    signCount,
                 };
 
                 const result = await postJson(routes.login, payload);
@@ -376,19 +373,6 @@
             return bytes.buffer;
         }
 
-        function extractSignCount(authenticatorData) {
-            if (!authenticatorData) {
-                return null;
-            }
-
-            const view = new DataView(authenticatorData);
-
-            if (view.byteLength < 37) {
-                return null;
-            }
-
-            return view.getUint32(33, false);
-        }
 
         function stringToBase64Url(value) {
             return bufferToBase64Url(textEncoder.encode(value));
