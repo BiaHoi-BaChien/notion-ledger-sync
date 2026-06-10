@@ -13,7 +13,7 @@ class LedgerAuthControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function testFinishAuthenticationVerifiesSignatureAndUpdatesCredential(): void
+    public function test_finish_authentication_verifies_signature_and_updates_credential(): void
     {
         $appUrl = rtrim(config('app.url', 'http://localhost'), '/');
         $rpId = parse_url($appUrl, PHP_URL_HOST) ?: 'localhost';
@@ -58,11 +58,11 @@ class LedgerAuthControllerTest extends TestCase
 
         $rpIdHash = hash('sha256', $rpId, true);
         $signCount = 10;
-        $authenticatorData = $rpIdHash . chr(0x01) . pack('N', $signCount);
+        $authenticatorData = $rpIdHash.chr(0x01).pack('N', $signCount);
         $authenticatorDataEncoded = $this->encodeBase64Url($authenticatorData);
 
         $clientDataHash = hash('sha256', $clientDataJson, true);
-        $message = $authenticatorData . $clientDataHash;
+        $message = $authenticatorData.$clientDataHash;
         $signature = sodium_crypto_sign_detached($message, $secretKey);
         $signatureEncoded = $this->encodeBase64Url($signature);
 
@@ -79,7 +79,7 @@ class LedgerAuthControllerTest extends TestCase
                 'rawId' => 'credential-123',
                 'type' => 'public-key',
                 'challenge' => $challenge,
-                'signCount' => $signCount,
+                'signCount' => 999999,
                 'response' => [
                     'clientDataJSON' => $clientDataEncoded,
                     'authenticatorData' => $authenticatorDataEncoded,
@@ -103,7 +103,81 @@ class LedgerAuthControllerTest extends TestCase
         $this->assertEquals($now, $credential->last_used_at);
     }
 
-    public function testFinishAuthenticationAcceptsAppUrlWithSubdirectoryWhenOriginHeaderIsMissing(): void
+    public function test_finish_authentication_rejects_signed_sign_count_that_does_not_increase(): void
+    {
+        $origin = rtrim(config('app.url', 'http://localhost'), '/');
+        $rpId = parse_url($origin, PHP_URL_HOST) ?: 'localhost';
+
+        config([
+            'services.ledger_passkey' => [
+                'rp_id' => $rpId,
+                'rp_name' => 'Ledger Form',
+                'user_name' => 'ledger-form',
+                'user_display_name' => 'Ledger Form Operator',
+                'user_handle' => 'ledger-form-user',
+            ],
+            'app.url' => $origin,
+        ]);
+
+        $keyPair = sodium_crypto_sign_keypair();
+        $publicKey = sodium_crypto_sign_publickey($keyPair);
+        $secretKey = sodium_crypto_sign_secretkey($keyPair);
+        $storedSignCount = 10;
+
+        $credential = LedgerCredential::factory()->create([
+            'user_handle' => 'ledger-form-user',
+            'credential_id' => 'credential-clone',
+            'public_key' => base64_encode($this->ed25519PublicKeyToDer($publicKey)),
+            'public_key_algorithm' => -8,
+            'sign_count' => $storedSignCount,
+        ]);
+
+        $challengeBytes = random_bytes(32);
+        $challenge = $this->encodeBase64Url($challengeBytes);
+        $clientDataJson = json_encode([
+            'type' => 'webauthn.get',
+            'challenge' => $challenge,
+            'origin' => $origin,
+            'crossOrigin' => false,
+        ], JSON_UNESCAPED_SLASHES);
+        $authenticatorData = hash('sha256', $rpId, true)
+            .chr(0x01)
+            .pack('N', $storedSignCount);
+        $signature = sodium_crypto_sign_detached(
+            $authenticatorData.hash('sha256', $clientDataJson, true),
+            $secretKey
+        );
+
+        $response = $this
+            ->withSession([
+                'webauthn.authentication.challenge' => $challenge,
+            ])
+            ->postJson(route('ledger.passkey.login.verify'), [
+                'id' => 'credential-clone',
+                'rawId' => 'credential-clone',
+                'type' => 'public-key',
+                'challenge' => $challenge,
+                'signCount' => $storedSignCount + 1000,
+                'response' => [
+                    'clientDataJSON' => $this->encodeBase64Url($clientDataJson),
+                    'authenticatorData' => $this->encodeBase64Url($authenticatorData),
+                    'signature' => $this->encodeBase64Url($signature),
+                    'userHandle' => $this->encodeBase64Url('ledger-form-user'),
+                ],
+            ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('response.authenticatorData')
+            ->assertSessionMissing('ledger_authenticated');
+
+        $credential->refresh();
+
+        $this->assertSame($storedSignCount, $credential->sign_count);
+        $this->assertNull($credential->last_used_at);
+    }
+
+    public function test_finish_authentication_accepts_app_url_with_subdirectory_when_origin_header_is_missing(): void
     {
         $appUrl = 'https://clb-biahoi.net/notion_ledger_sync';
         $rpId = 'clb-biahoi.net';
@@ -147,11 +221,11 @@ class LedgerAuthControllerTest extends TestCase
         $clientDataEncoded = $this->encodeBase64Url($clientDataJson);
 
         $signCount = 2;
-        $authenticatorData = hash('sha256', $rpId, true) . chr(0x01) . pack('N', $signCount);
+        $authenticatorData = hash('sha256', $rpId, true).chr(0x01).pack('N', $signCount);
         $authenticatorDataEncoded = $this->encodeBase64Url($authenticatorData);
 
         $clientDataHash = hash('sha256', $clientDataJson, true);
-        $signature = sodium_crypto_sign_detached($authenticatorData . $clientDataHash, $secretKey);
+        $signature = sodium_crypto_sign_detached($authenticatorData.$clientDataHash, $secretKey);
 
         $response = $this
             ->withSession([
@@ -162,7 +236,6 @@ class LedgerAuthControllerTest extends TestCase
                 'rawId' => 'credential-subdirectory',
                 'type' => 'public-key',
                 'challenge' => $challenge,
-                'signCount' => $signCount,
                 'response' => [
                     'clientDataJSON' => $clientDataEncoded,
                     'authenticatorData' => $authenticatorDataEncoded,
@@ -215,9 +288,9 @@ class LedgerAuthControllerTest extends TestCase
             'origin' => $untrustedOrigin,
             'crossOrigin' => false,
         ], JSON_UNESCAPED_SLASHES);
-        $authenticatorData = hash('sha256', $rpId, true) . chr(0x01) . pack('N', 2);
+        $authenticatorData = hash('sha256', $rpId, true).chr(0x01).pack('N', 2);
         $signature = sodium_crypto_sign_detached(
-            $authenticatorData . hash('sha256', $clientDataJson, true),
+            $authenticatorData.hash('sha256', $clientDataJson, true),
             $secretKey
         );
 
@@ -231,7 +304,6 @@ class LedgerAuthControllerTest extends TestCase
                 'rawId' => 'credential-untrusted-origin',
                 'type' => 'public-key',
                 'challenge' => $challenge,
-                'signCount' => 2,
                 'response' => [
                     'clientDataJSON' => $this->encodeBase64Url($clientDataJson),
                     'authenticatorData' => $this->encodeBase64Url($authenticatorData),
@@ -253,7 +325,7 @@ class LedgerAuthControllerTest extends TestCase
         $this->assertNull($credential->last_used_at);
     }
 
-    public function testPasskeyOptionsUseRequestHostWhenConfiguredRpIdIsBlankAndAppUrlIsLocalhost(): void
+    public function test_passkey_options_use_request_host_when_configured_rp_id_is_blank_and_app_url_is_localhost(): void
     {
         config([
             'app.name' => 'Ledger Form',
@@ -284,7 +356,7 @@ class LedgerAuthControllerTest extends TestCase
             ->assertJsonPath('rpId', 'ledger.example.test');
     }
 
-    public function testPasskeyOptionsKeepExplicitRpIdForSubdomains(): void
+    public function test_passkey_options_keep_explicit_rp_id_for_subdomains(): void
     {
         config([
             'app.url' => 'https://ledger.clb-biahoi.net',
@@ -304,7 +376,7 @@ class LedgerAuthControllerTest extends TestCase
             ->assertJsonPath('rp.id', 'clb-biahoi.net');
     }
 
-    public function testFinishAuthenticationReturns422WhenSignatureValidationFails(): void
+    public function test_finish_authentication_returns422_when_signature_validation_fails(): void
     {
         $appUrl = rtrim(config('app.url', 'http://localhost'), '/');
         $rpId = parse_url($appUrl, PHP_URL_HOST) ?: 'localhost';
@@ -348,13 +420,13 @@ class LedgerAuthControllerTest extends TestCase
         $clientDataEncoded = $this->encodeBase64Url($clientDataJson);
 
         $rpIdHash = hash('sha256', $rpId, true);
-        $authenticatorData = $rpIdHash . chr(0x01) . pack('N', 3);
+        $authenticatorData = $rpIdHash.chr(0x01).pack('N', 3);
         $authenticatorDataEncoded = $this->encodeBase64Url($authenticatorData);
 
         $clientDataHash = hash('sha256', $clientDataJson, true);
-        $message = $authenticatorData . $clientDataHash;
+        $message = $authenticatorData.$clientDataHash;
         $signature = sodium_crypto_sign_detached($message, $secretKey);
-        $signature[0] = chr(ord($signature[0]) ^ 0xff);
+        $signature[0] = chr(ord($signature[0]) ^ 0xFF);
         $signatureEncoded = $this->encodeBase64Url($signature);
 
         $response = $this
@@ -367,7 +439,6 @@ class LedgerAuthControllerTest extends TestCase
                 'rawId' => 'credential-456',
                 'type' => 'public-key',
                 'challenge' => $challenge,
-                'signCount' => 3,
                 'response' => [
                     'clientDataJSON' => $clientDataEncoded,
                     'authenticatorData' => $authenticatorDataEncoded,
@@ -398,6 +469,6 @@ class LedgerAuthControllerTest extends TestCase
     {
         $prefix = hex2bin('302a300506032b6570032100');
 
-        return ($prefix ?? '') . $publicKey;
+        return ($prefix ?? '').$publicKey;
     }
 }

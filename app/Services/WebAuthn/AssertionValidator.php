@@ -9,10 +9,10 @@ use JsonException;
 class AssertionValidator
 {
     /**
-     * @param array{clientDataJSON:string,authenticatorData:string,signature:string} $response
-     * @param array{challenge:string,rp_id:string,origin?:string} $context
+     * @param  array{clientDataJSON:string,authenticatorData:string,signature:string}  $response
+     * @param  array{challenge:string,rp_id:string,origin?:string}  $context
      */
-    public function validate(LedgerCredential $credential, array $response, array $context): void
+    public function validate(LedgerCredential $credential, array $response, array $context): AssertionResult
     {
         $clientDataJson = $this->decodeBase64Url($response['clientDataJSON'] ?? '');
         $authenticatorData = $this->decodeBase64Url($response['authenticatorData'] ?? '');
@@ -38,6 +38,17 @@ class AssertionValidator
         $this->assertRpIdMatches($context['rp_id'], $authenticatorData);
 
         $this->verifySignature($credential, $authenticatorData, $clientDataJson, $signature);
+
+        return new AssertionResult($this->extractSignCount($authenticatorData));
+    }
+
+    private function extractSignCount(string $authenticatorData): int
+    {
+        if (strlen($authenticatorData) < 37) {
+            throw new AssertionValidationException('パスキーの authenticator data が不正です。');
+        }
+
+        return unpack('N', substr($authenticatorData, 33, 4))[1];
     }
 
     private function assertChallengeMatches(string $expectedChallenge, ?string $providedChallenge): void
@@ -118,7 +129,7 @@ class AssertionValidator
         }
 
         $clientDataHash = hash('sha256', $clientDataJson, true);
-        $signedData = $authenticatorData . $clientDataHash;
+        $signedData = $authenticatorData.$clientDataHash;
 
         $algorithm = $credential->public_key_algorithm ?? -8;
 
@@ -226,7 +237,7 @@ class AssertionValidator
 
         $chunks = trim(chunk_split($encoded, 64, "\n"));
 
-        return sprintf("-----BEGIN PUBLIC KEY-----%s%s%s-----END PUBLIC KEY-----", PHP_EOL, $chunks, PHP_EOL);
+        return sprintf('-----BEGIN PUBLIC KEY-----%s%s%s-----END PUBLIC KEY-----', PHP_EOL, $chunks, PHP_EOL);
     }
 
     private function decodePemPublicKey(string $stored): string

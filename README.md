@@ -88,7 +88,14 @@ php -r "echo password_hash('希望するログイン名', PASSWORD_BCRYPT), PHP_
 php -r "echo password_hash('希望するパスワード', PASSWORD_BCRYPT), PHP_EOL;"
 ```
 
-生成したハッシュを `.env` に記載すると、ID／パスワードでのログインボタンが表示されます。
+生成した2つのハッシュを `.env` に引用符付きで設定すると、ID／パスワードでのログインボタンが表示されます。
+
+```dotenv
+LEDGER_FORM_USERNAME_HASH='$2y$...'
+LEDGER_FORM_PASSWORD_HASH='$2y$...'
+```
+
+両方が未設定または片方のみ設定されている場合、credential login は無効です。hash や元の認証情報は環境ごとに固有の値を生成し、リポジトリへのコミットや別環境での再利用は行わないでください。
 
 ## 月次集計 Webhook の利用方法
 
