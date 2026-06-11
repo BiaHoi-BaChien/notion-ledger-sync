@@ -1,0 +1,25 @@
+DirectoryIndex index.php
+
+<IfModule mod_negotiation.c>
+    Options -MultiViews
+</IfModule>
+
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
+
+<FilesMatch "(^\.|(?:^|\.)(?:bak|conf|config|dist|env|ini|log|pem|key|sql|sqlite|sqlite3|yml|yaml)$|^(?:artisan|composer\.(?:json|lock)|package(?:-lock)?\.json|phpunit\.xml|README\.md|LICENSE)$)">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Keep application code and runtime data inaccessible from the web.
+    RewriteRule (^|/)\. - [F,L]
+    RewriteRule ^(?:app|bootstrap|config|database|public|resources|routes|storage|tests|vendor)(?:/|$) - [F,L,NC]
+
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
