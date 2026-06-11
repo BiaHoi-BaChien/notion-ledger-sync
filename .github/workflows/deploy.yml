@@ -38,6 +38,7 @@ jobs:
             ./ .deploy/
 
           cp -a public/. .deploy/
+          cp .htaccess .deploy/.htaccess
 
           cat > .deploy/index.php <<'PHP'
           <?php
@@ -60,30 +61,6 @@ jobs:
 
           $kernel->terminate($request, $response);
           PHP
-
-          cat > .deploy/.htaccess <<'HTACCESS'
-          DirectoryIndex index.php
-
-          <FilesMatch "(^\.|\.env$|composer\.(json|lock)$|phpunit\.xml$)">
-              Require all denied
-          </FilesMatch>
-
-          <IfModule mod_rewrite.c>
-              <IfModule mod_negotiation.c>
-                  Options -MultiViews -Indexes
-              </IfModule>
-
-              RewriteEngine On
-
-              RewriteRule (^|/)\. - [F,L]
-              RewriteRule ^(?:app|bootstrap|config|database|public|resources|routes|storage|tests|vendor)(?:/|$) - [F,L,NC]
-              RewriteRule ^(?:artisan|composer\.(?:json|lock)|package(?:-lock)?\.json|phpunit\.xml|README\.md|vite\.config\.js)$ - [F,L,NC]
-
-              RewriteCond %{REQUEST_FILENAME} !-d
-              RewriteCond %{REQUEST_FILENAME} !-f
-              RewriteRule ^ index.php [L]
-          </IfModule>
-          HTACCESS
 
       - name: Upload files
         uses: appleboy/scp-action@v1

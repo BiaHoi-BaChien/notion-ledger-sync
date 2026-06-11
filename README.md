@@ -122,8 +122,8 @@ X-Webhook-Token: <WEBHOOK_TOKEN>
 本番では共有ドキュメントルートの `.htaccess` に個別 rewrite を追加せず、`https://clb-biahoi.net/notion_ledger_sync` で直接アクセスできる構成にします。
 
 1. アプリ一式を `/home/u685478147/public_html/public_html/notion_ledger_sync` に配置します。
-2. GitHub Actions が Laravel の `public/` の中身を deploy root へコピーし、root 用の `index.php` と `.htaccess` を自動生成します。
-3. 生成される `.htaccess` は `app/`、`bootstrap/`、`config/`、`database/`、`resources/`、`routes/`、`storage/`、`vendor/`、`.env` などへの直接アクセスを拒否します。
+2. GitHub Actions が Laravel の `public/` の中身を deploy root へコピーし、root 用の `index.php` を生成して、リポジトリ root の `.htaccess` を配置します。
+3. `.htaccess` は `app/`、`bootstrap/`、`config/`、`database/`、`resources/`、`routes/`、`storage/`、`vendor/`、hidden files、設定・依存・DB・鍵・ログ類などへの直接アクセスを拒否します。
 4. 共有側の `/home/u685478147/public_html/public_html/.htaccess` には、このアプリ用の rewrite を追加しません。
 5. `.env` は以下のように設定します。
 
