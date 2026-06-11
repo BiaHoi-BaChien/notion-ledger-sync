@@ -63,7 +63,7 @@ class AdjustmentServiceTest extends TestCase
         $this->assertSame(300.0, $result->cashOnHand);
         $this->assertSame(1500.0, $result->physicalTotal);
         $this->assertSame(74.5, $result->notionTotal);
-        $this->assertSame(1225.5, $result->adjustmentAmount);
+        $this->assertSame(1425.5, $result->adjustmentAmount);
         $this->assertSame($this->targetAccount, $result->accountName);
         $this->assertSame([], $result->missingCarryOverAccounts);
     }

@@ -50,7 +50,7 @@ class AdjustmentService
         }
 
         $physicalTotal = $bankBalance + $cashOnHand;
-        $adjustmentAmount = $physicalTotal - $total - $salaryAmount;
+        $adjustmentAmount = $physicalTotal - $total;
 
         return new AdjustmentResult(
             $now,

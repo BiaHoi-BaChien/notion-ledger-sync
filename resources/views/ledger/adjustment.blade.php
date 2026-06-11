@@ -252,18 +252,6 @@
             font-weight: 700;
             color: var(--text);
         }
-        .calculation-summary {
-            margin-top: 1.25rem;
-            padding: 1.1rem 1.3rem;
-            border-radius: 1rem;
-            background: rgba(37, 99, 235, 0.08);
-            color: var(--text);
-            line-height: 1.6;
-        }
-        .calculation-summary strong {
-            display: inline-block;
-            margin-bottom: 0.35rem;
-        }
         .timestamp {
             margin-top: 1rem;
             font-size: 0.9rem;
@@ -348,9 +336,6 @@
                     </div>
                 @endif
                 @php
-                    $formattedSalary = number_format($result->salaryAmount, 0, '.', ',');
-                    $formattedBank = number_format($result->bankBalance, 0, '.', ',');
-                    $formattedCash = number_format($result->cashOnHand, 0, '.', ',');
                     $formattedPhysicalTotal = number_format($result->physicalTotal, 0, '.', ',');
                     $formattedNotionTotal = number_format($result->notionTotal, 0, '.', ',');
                     $formattedAdjustment = number_format($result->adjustmentAmount, 0, '.', ',');
@@ -360,47 +345,28 @@
                 @endphp
                 <div class="result-grid">
                     <div class="result-item">
-                        <span class="label">今回の給与振込額</span>
-                        <span class="value">{{ $formattedSalary }}₫</span>
-                    </div>
-                    <div class="result-item">
-                        <span class="label">普通預金残高</span>
-                        <span class="value">{{ $formattedBank }}₫</span>
-                    </div>
-                    <div class="result-item">
-                        <span class="label">手持ち現金</span>
-                        <span class="value">{{ $formattedCash }}₫</span>
-                    </div>
-                    <div class="result-item">
-                        <span class="label">銀行口座＋現金の実残高合計</span>
+                        <span class="label">普通預金残高＋手持ち現金</span>
                         <span class="value">{{ $formattedPhysicalTotal }}₫</span>
                     </div>
                     <div class="result-item">
-                        <span class="label">Notion記録の合計 ({{ $result->accountName }})</span>
+                        <span class="label">Notion上の記録</span>
                         <span class="value">{{ $formattedNotionTotal }}₫</span>
                     </div>
                     <div class="result-item">
-                        <span class="label">計算された調整額</span>
+                        <span class="label">調整額</span>
                         <span class="value">{{ $formattedAdjustment }}₫</span>
-                        <form method="post" action="{{ route('adjustment.register') }}" class="register-form">
-                            @csrf
-                            <input type="hidden" name="salary_amount" value="{{ $inputs['salary_amount'] }}">
-                            <input type="hidden" name="bank_balance" value="{{ $inputs['bank_balance'] }}">
-                            <input type="hidden" name="cash_on_hand" value="{{ $inputs['cash_on_hand'] }}">
-                            <button class="secondary-btn" type="submit" @if(!$hasRegistrationTarget) disabled @endif>給与・調整額を家計簿に登録</button>
-                            @if (!$hasRegistrationTarget)
-                                <p class="no-adjustment-message" role="status">登録する給与・調整額はありません</p>
-                            @endif
-                        </form>
                     </div>
                 </div>
-                <div class="calculation-summary">
-                    <p>
-                        <strong>調整額 = 実残高合計 − Notion記録の合計 − 今回の給与振込額</strong><br>
-                        ({{ $formattedPhysicalTotal }}₫ − {{ $formattedNotionTotal }}₫ − {{ $formattedSalary }}₫ = {{ $formattedAdjustment }}₫)
-                    </p>
-                    <p>普通預金残高と手持ちの金額を合計した実残高から、Notionに記録された合計額と今回登録する給与額を差し引いた金額が調整額として算出されています。</p>
-                </div>
+                <form method="post" action="{{ route('adjustment.register') }}" class="register-form">
+                    @csrf
+                    <input type="hidden" name="salary_amount" value="{{ $inputs['salary_amount'] }}">
+                    <input type="hidden" name="bank_balance" value="{{ $inputs['bank_balance'] }}">
+                    <input type="hidden" name="cash_on_hand" value="{{ $inputs['cash_on_hand'] }}">
+                    <button class="secondary-btn" type="submit" @if(!$hasRegistrationTarget) disabled @endif>給与・調整額を家計簿に登録</button>
+                    @if (!$hasRegistrationTarget)
+                        <p class="no-adjustment-message" role="status">登録する給与・調整額はありません</p>
+                    @endif
+                </form>
                 <p class="timestamp">
                     対象月: {{ $result->targetMonthStart->format('Y年n月') }} / 計算日時: {{ $result->calculatedAt->timezone(config('app.timezone'))->format('Y年n月j日 H:i') }}
                 </p>
