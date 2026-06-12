@@ -118,9 +118,13 @@ jobs:
             composer install --no-dev --optimize-autoloader --no-interaction
             php artisan optimize:clear
             php artisan migrate --force
-            php artisan config:cache
-            php artisan route:cache
-            php artisan view:cache
+
+            # Hostinger では生成済みキャッシュが Web 実行時エラーを起こすため、
+            # deploy 後は Laravel のキャッシュを clear 状態に保つ。
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan route:clear
+            php artisan view:clear
 
             APP_URL="$(php -r '$url = ""; foreach (file(".env", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) { if (preg_match("/^APP_URL=(.*)$/", $line, $matches)) { $url = trim($matches[1], " \t\n\r\0\x0B\"'"'"'"); break; } } echo rtrim($url, "/");')"
             APP_URL="${APP_URL:-https://clb-biahoi.net/notion_ledger_sync}"
