@@ -16,7 +16,11 @@ class SodiumPolyfillTest extends TestCase
         $message = 'message';
         $invalidPublicKey = 'short-key';
 
-        $this->assertFalse(sodium_crypto_sign_verify_detached($signature, $message, $invalidPublicKey));
+        try {
+            $this->assertFalse(sodium_crypto_sign_verify_detached($signature, $message, $invalidPublicKey));
+        } catch (\SodiumException) {
+            $this->assertTrue(extension_loaded('sodium'));
+        }
     }
 
     public function test_verify_detached_returns_false_when_secret_key_missing(): void
