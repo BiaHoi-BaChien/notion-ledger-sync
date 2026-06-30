@@ -15,127 +15,48 @@ return [
         'skip_if_carry_over_exists' => filter_var(env('MONTHLY_SUM_SKIP_IF_CARRY_OVER_EXISTS', true), FILTER_VALIDATE_BOOLEAN),
         'accounts' => (static function (): array {
             $parseList = static function (?string $value): array {
-                if ($value === null) {
+                $value = trim((string) $value, " \t\n\r\0\x0B\"'");
+
+                if ($value === '') {
                     return [];
                 }
 
-                $normalized = preg_replace("/\r\n|\r/", "\n", $value);
-                if ($normalized === null) {
-                    $normalized = $value;
-                }
-
-                $normalized = trim($normalized);
-
-                if ($normalized !== '') {
-                    $length = strlen($normalized);
-
-                    if ($length >= 2) {
-                        $first = $normalized[0];
-                        $last = $normalized[$length - 1];
-
-                        if (($first === '"' && $last === '"') || ($first === '\'' && $last === '\'')) {
-                            $normalized = substr($normalized, 1, -1);
-                        }
-                    }
-                }
-
-                $items = preg_split('/[,\n]+/', $normalized);
-
-                if ($items === false) {
-                    return [];
-                }
-
-                $items = array_map(
-                    static function (string $item): string {
-                        $trimmed = trim($item);
-
-                        if ($trimmed === '') {
-                            return '';
-                        }
-
-                        return trim($trimmed, "\"'");
-                    },
-                    $items
-                );
-
-                $items = array_filter($items, static fn (string $item): bool => $item !== '');
-
-                if ($items === []) {
-                    return [];
-                }
+                $items = array_filter(array_map(
+                    static fn (string $item): string => trim($item, " \t\n\r\0\x0B\"'"),
+                    preg_split('/[,\r\n]+/', $value) ?: []
+                ));
 
                 return array_values(array_unique($items, SORT_STRING));
             };
 
-            $configuredRaw = env('MONTHLY_SUM_ACCOUNT');
+            $envString = static function (string $name): ?string {
+                $value = env($name);
 
-            if (is_string($configuredRaw)) {
-                $configuredRaw = trim($configuredRaw);
-            } elseif ($configuredRaw !== null && is_scalar($configuredRaw)) {
-                $configuredRaw = trim((string) $configuredRaw);
-            } elseif ($configuredRaw !== null) {
-                $configuredRaw = null;
-            }
+                return is_scalar($value) ? trim((string) $value) : null;
+            };
 
-            if (is_string($configuredRaw) && $configuredRaw !== '') {
+            if ($configuredRaw = $envString('MONTHLY_SUM_ACCOUNT')) {
                 if (str_contains($configuredRaw, '+')) {
-                    $references = preg_split('/\s*\+\s*/', $configuredRaw);
+                    $accounts = [];
 
-                    if ($references !== false) {
-                        $aggregated = [];
-
-                        foreach ($references as $reference) {
-                            $reference = trim($reference);
-
-                            if ($reference === '') {
-                                continue;
-                            }
-
-                            $referenceValue = env($reference);
-
-                            if ($referenceValue === null) {
-                                continue;
-                            }
-
-                            if (! is_string($referenceValue)) {
-                                if (is_scalar($referenceValue)) {
-                                    $referenceValue = (string) $referenceValue;
-                                } else {
-                                    continue;
-                                }
-                            }
-
-                            $referenceValue = trim($referenceValue);
-
-                            if ($referenceValue === '') {
-                                continue;
-                            }
-
-                            $aggregated = array_merge($aggregated, $parseList($referenceValue));
-                        }
-
-                        $aggregated = array_values(array_unique(array_filter(
-                            $aggregated,
-                            static fn (string $item): bool => $item !== ''
-                        ), SORT_STRING));
-
-                        if ($aggregated !== []) {
-                            return $aggregated;
-                        }
+                    foreach (preg_split('/\s*\+\s*/', $configuredRaw) ?: [] as $name) {
+                        $accounts = array_merge($accounts, $parseList($envString($name)));
                     }
-                } else {
-                    $configured = $parseList($configuredRaw);
 
-                    if ($configured !== []) {
-                        return $configured;
+                    if ($accounts !== []) {
+                        return array_values(array_unique($accounts, SORT_STRING));
                     }
+                }
+
+                if ($accounts = $parseList($configuredRaw)) {
+                    return $accounts;
                 }
             }
 
-            return array_values(array_unique(array_filter(array_merge(
-                $parseList(env('MONTHLY_SUM_ACCOUNT_CASH', '現金/普通預金')),
-                $parseList(env('MONTHLY_SUM_ACCOUNT_TIME_DEPOSIT', '定期預金'))
-            ), static fn (string $item): bool => $item !== ''), SORT_STRING));
+            return array_values(array_unique(array_merge(
+                $parseList($envString('MONTHLY_SUM_ACCOUNT_CASH') ?? '現金/普通預金'),
+                $parseList($envString('MONTHLY_SUM_ACCOUNT_TIME_DEPOSIT') ?? '定期預金')
+            ), SORT_STRING));
         })(),
     ],
     'adjustment' => [
@@ -155,20 +76,11 @@ return [
         'username_hash' => env('LEDGER_FORM_USERNAME_HASH', ''),
         'password_hash' => env('LEDGER_FORM_PASSWORD_HASH', ''),
     ],
-    'ledger_passkey' => (static function (): array {
-        $appUrl = config('app.url', 'http://localhost');
-        $host = parse_url($appUrl, PHP_URL_HOST);
-
-        if (! is_string($host) || $host === '') {
-            $host = 'localhost';
-        }
-
-        return [
-            'rp_id' => env('LEDGER_PASSKEY_RP_ID') ?: $host,
-            'rp_name' => env('LEDGER_PASSKEY_RP_NAME') ?: env('APP_NAME', 'Ledger Form'),
-            'user_name' => env('LEDGER_PASSKEY_USER_NAME') ?: 'ledger-form',
-            'user_display_name' => env('LEDGER_PASSKEY_USER_DISPLAY_NAME') ?: 'Ledger Form Operator',
-            'user_handle' => env('LEDGER_PASSKEY_USER_HANDLE') ?: 'ledger-form-user',
-        ];
-    })(),
+    'ledger_passkey' => [
+        'rp_id' => env('LEDGER_PASSKEY_RP_ID'),
+        'rp_name' => env('LEDGER_PASSKEY_RP_NAME') ?: env('APP_NAME', 'Ledger Form'),
+        'user_name' => env('LEDGER_PASSKEY_USER_NAME') ?: 'ledger-form',
+        'user_display_name' => env('LEDGER_PASSKEY_USER_DISPLAY_NAME') ?: 'Ledger Form Operator',
+        'user_handle' => env('LEDGER_PASSKEY_USER_HANDLE') ?: 'ledger-form-user',
+    ],
 ];

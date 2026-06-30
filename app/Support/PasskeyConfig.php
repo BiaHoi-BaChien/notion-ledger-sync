@@ -20,32 +20,11 @@ final class PasskeyConfig
             return self::normalize($config, $request);
         }
 
-        return self::default($request);
+        return self::normalize([], $request);
     }
 
     /**
-     * @return array{rp_id:string,rp_name:string,user_name:string,user_display_name:string,user_handle:string}
-     */
-    private static function default(?Request $request = null): array
-    {
-        $appUrl = config('app.url', 'http://localhost');
-        $host = parse_url($appUrl, PHP_URL_HOST);
-
-        if (! is_string($host) || $host === '') {
-            $host = 'localhost';
-        }
-
-        return [
-            'rp_id' => self::effectiveRpId(env('LEDGER_PASSKEY_RP_ID'), $host, $request),
-            'rp_name' => self::stringValue(env('LEDGER_PASSKEY_RP_NAME'), self::stringValue(config('app.name'), 'Ledger Form')),
-            'user_name' => self::stringValue(env('LEDGER_PASSKEY_USER_NAME'), 'ledger-form'),
-            'user_display_name' => self::stringValue(env('LEDGER_PASSKEY_USER_DISPLAY_NAME'), 'Ledger Form Operator'),
-            'user_handle' => self::stringValue(env('LEDGER_PASSKEY_USER_HANDLE'), 'ledger-form-user'),
-        ];
-    }
-
-    /**
-     * @param array<string, mixed> $config
+     * @param  array<string, mixed>  $config
      * @return array{rp_id:string,rp_name:string,user_name:string,user_display_name:string,user_handle:string}
      */
     private static function normalize(array $config, ?Request $request): array
