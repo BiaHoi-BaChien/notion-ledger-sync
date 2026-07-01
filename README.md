@@ -124,8 +124,9 @@ X-Webhook-Token: <WEBHOOK_TOKEN>
 1. アプリ一式を `/home/u685478147/public_html/public_html/notion_ledger_sync` に配置します。
 2. GitHub Actions が Laravel の `public/` の中身を deploy root へコピーし、root 用の `index.php` を生成して、リポジトリ root の `.htaccess` を配置します。
 3. `.htaccess` は `app/`、`bootstrap/`、`config/`、`database/`、`resources/`、`routes/`、`storage/`、`vendor/`、hidden files、設定・依存・DB・鍵・ログ類などへの直接アクセスを拒否します。
-4. 共有側の `/home/u685478147/public_html/public_html/.htaccess` には、このアプリ用の rewrite を追加しません。
-5. `.env` は以下のように設定します。
+4. 検索エンジンや AI クローラーに発見されにくくするため、`robots.txt` で全パスのクロールを拒否し、Apache と Laravel の両方で `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex` を返します。これは協調的なクローラー向けの抑止であり、URLを知っている第三者からのアクセス制御には認証を使ってください。
+5. 共有側の `/home/u685478147/public_html/public_html/.htaccess` には、このアプリ用の rewrite を追加しません。
+6. `.env` は以下のように設定します。
 
 ```dotenv
 APP_URL=https://clb-biahoi.net/notion_ledger_sync

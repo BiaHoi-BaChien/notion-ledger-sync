@@ -8,6 +8,10 @@ DirectoryIndex index.php
     Options -Indexes
 </IfModule>
 
+<IfModule mod_headers.c>
+    Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex"
+</IfModule>
+
 <FilesMatch "(^\.|(?:^|\.)(?:bak|conf|config|dist|env|ini|log|pem|key|sql|sqlite|sqlite3|yml|yaml)$|^(?:artisan|composer\.(?:json|lock)|package(?:-lock)?\.json|phpunit\.xml|README\.md|LICENSE)$)">
     Require all denied
 </FilesMatch>
