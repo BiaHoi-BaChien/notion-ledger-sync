@@ -3,6 +3,10 @@
         Options -MultiViews -Indexes
     </IfModule>
 
+    <IfModule mod_headers.c>
+        Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex"
+    </IfModule>
+
     RewriteEngine On
 
     RewriteCond %{REQUEST_FILENAME} !-d

@@ -3,6 +3,7 @@
 require_once __DIR__.'/../app/Support/sodium_polyfill.php';
 
 use App\Http\Middleware\EnsureLedgerAuthenticated;
+use App\Http\Middleware\PreventSearchIndexing;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         // Register global and route middleware groups as needed.
+
+        $middleware->append(PreventSearchIndexing::class);
 
         $middleware->alias([
             'ledger.auth' => EnsureLedgerAuthenticated::class,
