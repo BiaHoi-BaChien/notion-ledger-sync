@@ -338,6 +338,7 @@
                 @php
                     $formattedPhysicalTotal = number_format($result->physicalTotal, 0, '.', ',');
                     $formattedNotionTotal = number_format($result->notionTotal, 0, '.', ',');
+                    $formattedExpectedTotal = number_format($result->notionTotal + $result->salaryAmount, 0, '.', ',');
                     $formattedAdjustment = number_format($result->adjustmentAmount, 0, '.', ',');
                     $isZeroAdjustment = abs((float) $result->adjustmentAmount) < 0.00001;
                     $hasSalary = $result->salaryAmount > 0;
@@ -349,8 +350,8 @@
                         <span class="value">{{ $formattedPhysicalTotal }}₫</span>
                     </div>
                     <div class="result-item">
-                        <span class="label">Notion上の記録</span>
-                        <span class="value">{{ $formattedNotionTotal }}₫</span>
+                        <span class="label">{{ $hasSalary ? 'Notion上の記録＋今回給与' : 'Notion上の記録' }}</span>
+                        <span class="value">{{ $hasSalary ? $formattedExpectedTotal : $formattedNotionTotal }}₫</span>
                     </div>
                     <div class="result-item">
                         <span class="label">調整額</span>
