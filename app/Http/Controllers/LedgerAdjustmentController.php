@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\LedgerCredential;
 use App\Services\Adjustment\AdjustmentService;
 use App\Support\PasskeyConfig;
 use Illuminate\Http\Request;
@@ -10,9 +11,7 @@ use Throwable;
 
 class LedgerAdjustmentController extends Controller
 {
-    public function __construct(private AdjustmentService $service)
-    {
-    }
+    public function __construct(private AdjustmentService $service) {}
 
     public function show(Request $request): View
     {
@@ -26,6 +25,7 @@ class LedgerAdjustmentController extends Controller
             'status' => null,
             'passkey' => $this->getPasskeyConfig($request),
             'passkeyRoutes' => $this->getPasskeyRoutes(),
+            'hasRegisteredPasskey' => $this->hasRegisteredPasskey($request),
         ]);
     }
 
@@ -45,6 +45,7 @@ class LedgerAdjustmentController extends Controller
             'status' => null,
             'passkey' => $this->getPasskeyConfig($request),
             'passkeyRoutes' => $this->getPasskeyRoutes(),
+            'hasRegisteredPasskey' => $this->hasRegisteredPasskey($request),
         ]);
     }
 
@@ -93,6 +94,7 @@ class LedgerAdjustmentController extends Controller
             'status' => $status,
             'passkey' => $this->getPasskeyConfig($request),
             'passkeyRoutes' => $this->getPasskeyRoutes(),
+            'hasRegisteredPasskey' => $this->hasRegisteredPasskey($request),
         ]);
     }
 
@@ -131,5 +133,12 @@ class LedgerAdjustmentController extends Controller
             'register_options' => route('ledger.passkey.register.options'),
             'register' => route('ledger.passkey.register.store'),
         ];
+    }
+
+    private function hasRegisteredPasskey(Request $request): bool
+    {
+        return LedgerCredential::query()
+            ->where('user_handle', $this->getPasskeyConfig($request)['user_handle'])
+            ->exists();
     }
 }

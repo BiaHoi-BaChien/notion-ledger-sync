@@ -2,16 +2,22 @@
 
 namespace Tests\Feature\Http\Controllers;
 
+use App\Models\LedgerCredential;
 use App\Services\Adjustment\AdjustmentResult;
 use App\Services\Adjustment\AdjustmentService;
 use App\Support\PasskeyConfig;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use RuntimeException;
 use Tests\TestCase;
 
+#[RequiresPhpExtension('pdo_sqlite')]
 class LedgerAdjustmentControllerTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -44,6 +50,22 @@ class LedgerAdjustmentControllerTest extends TestCase
             'register_options' => route('ledger.passkey.register.options'),
             'register' => route('ledger.passkey.register.store'),
         ]);
+        $response->assertViewHas('hasRegisteredPasskey', false);
+        $response->assertSee('id="passkey-register-button"', false);
+    }
+
+    public function test_hides_passkey_registration_button_when_passkey_is_registered(): void
+    {
+        LedgerCredential::factory()->create([
+            'user_handle' => 'ledger-form-user',
+        ]);
+
+        $response = $this->withSession(['ledger_authenticated' => true])
+            ->get('/');
+
+        $response->assertOk();
+        $response->assertViewHas('hasRegisteredPasskey', true);
+        $response->assertDontSee('id="passkey-register-button"', false);
     }
 
     public function test_calculate_validates_required_numeric_inputs(): void
