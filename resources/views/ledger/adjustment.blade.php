@@ -293,7 +293,9 @@
     <header>
         <h1>調整額計算ツール</h1>
         <div class="header-actions">
-            <button type="button" id="passkey-register-button">パスキー登録</button>
+            @unless ($hasRegisteredPasskey)
+                <button type="button" id="passkey-register-button">パスキー登録</button>
+            @endunless
             <form method="post" action="{{ route('ledger.logout') }}">
                 @csrf
                 <button type="submit">ログアウト</button>
@@ -462,6 +464,7 @@
 
             await postJson(routes.register, payload);
             setStatus('パスキーを登録しました。次回からは「パスキーでログイン」を選択してください。', 'success');
+            registerButton.hidden = true;
         });
     });
 
