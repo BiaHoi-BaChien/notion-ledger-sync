@@ -103,6 +103,79 @@ class LedgerAuthControllerTest extends TestCase
         $this->assertEquals($now, $credential->last_used_at);
     }
 
+    public function test_finish_authentication_rejects_assertion_without_user_presence(): void
+    {
+        $origin = rtrim(config('app.url', 'http://localhost'), '/');
+        $rpId = parse_url($origin, PHP_URL_HOST) ?: 'localhost';
+
+        config([
+            'services.ledger_passkey' => [
+                'rp_id' => $rpId,
+                'rp_name' => 'Ledger Form',
+                'user_name' => 'ledger-form',
+                'user_display_name' => 'Ledger Form Operator',
+                'user_handle' => 'ledger-form-user',
+            ],
+            'app.url' => $origin,
+        ]);
+
+        $keyPair = sodium_crypto_sign_keypair();
+        $publicKey = sodium_crypto_sign_publickey($keyPair);
+        $secretKey = sodium_crypto_sign_secretkey($keyPair);
+
+        $credential = LedgerCredential::factory()->create([
+            'user_handle' => 'ledger-form-user',
+            'credential_id' => 'credential-without-user-presence',
+            'public_key' => base64_encode($this->ed25519PublicKeyToDer($publicKey)),
+            'public_key_algorithm' => -8,
+            'sign_count' => 1,
+        ]);
+
+        $challengeBytes = random_bytes(32);
+        $challenge = $this->encodeBase64Url($challengeBytes);
+        $clientDataJson = json_encode([
+            'type' => 'webauthn.get',
+            'challenge' => $challenge,
+            'origin' => $origin,
+            'crossOrigin' => false,
+        ], JSON_UNESCAPED_SLASHES);
+        $authenticatorData = hash('sha256', $rpId, true).chr(0x00).pack('N', 2);
+        $signature = sodium_crypto_sign_detached(
+            $authenticatorData.hash('sha256', $clientDataJson, true),
+            $secretKey
+        );
+
+        $response = $this
+            ->withSession([
+                'webauthn.authentication.challenge' => $challenge,
+            ])
+            ->postJson(route('ledger.passkey.login.verify'), [
+                'id' => 'credential-without-user-presence',
+                'rawId' => 'credential-without-user-presence',
+                'type' => 'public-key',
+                'challenge' => $challenge,
+                'signCount' => 2,
+                'response' => [
+                    'clientDataJSON' => $this->encodeBase64Url($clientDataJson),
+                    'authenticatorData' => $this->encodeBase64Url($authenticatorData),
+                    'signature' => $this->encodeBase64Url($signature),
+                    'userHandle' => $this->encodeBase64Url('ledger-form-user'),
+                ],
+            ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJson([
+                'message' => 'ユーザーの存在確認ができません。',
+            ])
+            ->assertSessionMissing('ledger_authenticated');
+
+        $credential->refresh();
+
+        $this->assertSame(1, $credential->sign_count);
+        $this->assertNull($credential->last_used_at);
+    }
+
     public function test_finish_authentication_rejects_signed_sign_count_that_does_not_increase(): void
     {
         $origin = rtrim(config('app.url', 'http://localhost'), '/');
