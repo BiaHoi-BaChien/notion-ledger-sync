@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Prepare deploy bundle
         run: |
@@ -63,7 +63,7 @@ jobs:
           PHP
 
       - name: Upload files
-        uses: appleboy/scp-action@v1
+        uses: appleboy/scp-action@ff85246acaad7bdce478db94a363cd2bf7c90345 # v1
         with:
           host: ${{ secrets.HOSTINGER_HOST }}
           port: ${{ secrets.HOSTINGER_PORT }}
@@ -75,7 +75,7 @@ jobs:
           overwrite: true
 
       - name: Run Laravel deploy commands
-        uses: appleboy/ssh-action@v1
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         env:
           HOSTINGER_ENV_BASE64: ${{ secrets.HOSTINGER_ENV_BASE64 }}
         with:

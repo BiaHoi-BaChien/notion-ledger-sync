@@ -36,6 +36,7 @@ class AssertionValidator
         $this->assertOriginMatches($context['origin'] ?? null, $clientData['origin'] ?? null);
         $this->assertTypeIsAuthentication($clientData['type'] ?? null);
         $this->assertRpIdMatches($context['rp_id'], $authenticatorData);
+        $this->assertUserPresence($authenticatorData);
 
         $this->verifySignature($credential, $authenticatorData, $clientDataJson, $signature);
 
@@ -117,6 +118,19 @@ class AssertionValidator
 
         if (! hash_equals($expected, $rpIdHash)) {
             throw new AssertionValidationException('RP ID が一致しません。');
+        }
+    }
+
+    private function assertUserPresence(string $authenticatorData): void
+    {
+        if (strlen($authenticatorData) < 37) {
+            throw new AssertionValidationException('パスキーの authenticator data が不正です。');
+        }
+
+        $flags = ord($authenticatorData[32]);
+
+        if (($flags & 0x01) === 0) {
+            throw new AssertionValidationException('ユーザーの存在確認ができません。');
         }
     }
 
