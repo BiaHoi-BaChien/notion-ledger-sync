@@ -5,6 +5,7 @@ namespace Tests\Feature\Http\Controllers;
 use App\Models\LedgerCredential;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\TestCase;
 
@@ -13,7 +14,17 @@ class LedgerAuthControllerTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_finish_authentication_verifies_signature_and_updates_credential(): void
+    public static function acceptedSignCounts(): array
+    {
+        return [
+            'counter unsupported' => [0, 0],
+            'counter starts increasing' => [0, 1],
+            'counter increases' => [5, 10],
+        ];
+    }
+
+    #[DataProvider('acceptedSignCounts')]
+    public function test_finish_authentication_verifies_signature_and_updates_credential(int $storedSignCount, int $signCount): void
     {
         $appUrl = rtrim(config('app.url', 'http://localhost'), '/');
         $rpId = parse_url($appUrl, PHP_URL_HOST) ?: 'localhost';
@@ -41,7 +52,7 @@ class LedgerAuthControllerTest extends TestCase
             'credential_id' => 'credential-123',
             'public_key' => base64_encode($publicKeyDer),
             'public_key_algorithm' => -8,
-            'sign_count' => 5,
+            'sign_count' => $storedSignCount,
         ]);
 
         $challengeBytes = random_bytes(32);
@@ -57,7 +68,6 @@ class LedgerAuthControllerTest extends TestCase
         $clientDataEncoded = $this->encodeBase64Url($clientDataJson);
 
         $rpIdHash = hash('sha256', $rpId, true);
-        $signCount = 10;
         $authenticatorData = $rpIdHash.chr(0x01).pack('N', $signCount);
         $authenticatorDataEncoded = $this->encodeBase64Url($authenticatorData);
 
@@ -176,7 +186,17 @@ class LedgerAuthControllerTest extends TestCase
         $this->assertNull($credential->last_used_at);
     }
 
-    public function test_finish_authentication_rejects_signed_sign_count_that_does_not_increase(): void
+    public static function nonIncreasingSignCounts(): array
+    {
+        return [
+            'counter resets to zero' => [10, 0],
+            'counter decreases' => [10, 9],
+            'counter repeats' => [10, 10],
+        ];
+    }
+
+    #[DataProvider('nonIncreasingSignCounts')]
+    public function test_finish_authentication_rejects_signed_sign_count_that_does_not_increase(int $storedSignCount, int $signCount): void
     {
         $origin = rtrim(config('app.url', 'http://localhost'), '/');
         $rpId = parse_url($origin, PHP_URL_HOST) ?: 'localhost';
@@ -195,7 +215,6 @@ class LedgerAuthControllerTest extends TestCase
         $keyPair = sodium_crypto_sign_keypair();
         $publicKey = sodium_crypto_sign_publickey($keyPair);
         $secretKey = sodium_crypto_sign_secretkey($keyPair);
-        $storedSignCount = 10;
 
         $credential = LedgerCredential::factory()->create([
             'user_handle' => 'ledger-form-user',
@@ -215,7 +234,7 @@ class LedgerAuthControllerTest extends TestCase
         ], JSON_UNESCAPED_SLASHES);
         $authenticatorData = hash('sha256', $rpId, true)
             .chr(0x01)
-            .pack('N', $storedSignCount);
+            .pack('N', $signCount);
         $signature = sodium_crypto_sign_detached(
             $authenticatorData.hash('sha256', $clientDataJson, true),
             $secretKey
