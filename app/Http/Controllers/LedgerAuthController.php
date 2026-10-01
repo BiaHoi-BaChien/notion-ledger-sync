@@ -334,7 +334,6 @@ class LedgerAuthController extends Controller
         $newSignCount = $assertion->signCount;
 
         if ($credential->sign_count > 0
-            && $newSignCount > 0
             && $newSignCount <= $credential->sign_count
         ) {
             $this->logDebug('Ledger passkey authentication failed: sign count did not increase.', [
