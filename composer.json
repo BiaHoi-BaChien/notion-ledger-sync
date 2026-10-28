@@ -5,7 +5,7 @@
     "keywords": ["laravel", "notion"],
     "license": "MIT",
     "require": {
-        "php": "^8.5",
+        "php": "^8.5.12",
         "laravel/framework": "13.30.*"
     },
     "require-dev": {
@@ -18,7 +18,7 @@
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "platform": {
-            "php": "8.5.0"
+            "php": "8.5.12"
         },
         "sort-packages": true,
         "allow-plugins": {
