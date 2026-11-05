@@ -294,7 +294,8 @@ KEY;
 
         $this->get(route('ledger.login.form'))
             ->assertOk()
-            ->assertDontSee('PCなどからログインする場合');
+            ->assertDontSee('name="username"', false)
+            ->assertDontSee('name="password"', false);
 
         $this->post(route('ledger.credentials.login'), [
             'username' => 'copied-default',
