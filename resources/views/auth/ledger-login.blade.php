@@ -91,11 +91,6 @@
             flex-direction: column;
             gap: 0.75rem;
         }
-        .credentials-login h2 {
-            margin: 0;
-            font-size: 1.1rem;
-            color: #1f2937;
-        }
         .credentials-label {
             display: block;
             font-size: 0.9rem;
@@ -145,9 +140,7 @@
 
         @if ($credentials['enabled'])
             <hr class="separator" aria-hidden="true">
-            <div class="credentials-login" aria-labelledby="credentials-login-title">
-                <h2 id="credentials-login-title">PCなどからログインする場合</h2>
-                <p class="note">パスキーが利用できない端末では、事前に共有されたユーザー名とパスワードでログインできます。</p>
+            <div class="credentials-login">
                 <form method="POST" action="{{ $routes['credentials_login'] }}" novalidate>
                     @csrf
                     <label class="credentials-label" for="username">ユーザー名</label>

@@ -305,7 +305,7 @@
     <main>
         <div id="passkey-status" class="status" role="status" aria-live="polite" hidden></div>
         <section class="card">
-            <h2>今回の給与振込額、普通預金残高、手持ちの金額を入力してください。</h2>
+            <h2>今回の給与振込額、普通預金残高、手持ち現金を入力してください。</h2>
             <form method="post" action="{{ route('adjustment.calculate') }}" class="calculate-form">
                 @csrf
                 <div class="inputs">
@@ -318,7 +318,7 @@
                         <input id="bank_balance" name="bank_balance" type="number" step="0.01" inputmode="decimal" value="{{ old('bank_balance', $inputs['bank_balance'] ?? '') }}" required>
                     </label>
                     <label for="cash_on_hand">
-                        手持ちの金額
+                        手持ち現金
                         <input id="cash_on_hand" name="cash_on_hand" type="number" step="0.01" inputmode="decimal" value="{{ old('cash_on_hand', $inputs['cash_on_hand'] ?? '') }}" required>
                     </label>
                 </div>
